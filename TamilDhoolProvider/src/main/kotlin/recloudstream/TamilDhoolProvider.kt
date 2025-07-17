@@ -18,7 +18,6 @@ import com.lagradost.cloudstream3.utils.loadExtractor
 import org.jsoup.nodes.Element
 
 class TamilDhoolProvider : MainAPI() {
-    class TamildhoolPlugin : MainAPI() {
     override var mainUrl = "https://www.tamildhool.net"
     override var name = "TamilDhool"
     override val hasMainPage = true
