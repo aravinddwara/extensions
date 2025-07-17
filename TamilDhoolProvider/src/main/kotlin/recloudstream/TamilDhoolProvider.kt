@@ -1,5 +1,6 @@
 package recloudstream
 
+import com.lagradost.cloudstream3.Episode
 import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
@@ -73,11 +74,6 @@ class TamilDhoolProvider : MainAPI() {
             this.plot = description
         }
     }
-
-    data class Episode(
-        val url: String,
-        val name: String
-    )
 
     override suspend fun loadLinks(
         data: String,
