@@ -209,7 +209,6 @@ class TamilDhoolProvider : MainAPI() {
             
             newTvSeriesSearchResponse(seriesName, seriesUrl, TvType.TvSeries) {
                 this.posterUrl = seriesPoster
-                this.quality = "HD" // Assuming HD quality
             }
         }
         
