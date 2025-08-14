@@ -1,11 +1,11 @@
 // use an integer for version numbers
-version = 3
+version = 1
 
 cloudstream {
     // All of these properties are optional, you can safely remove any of them.
 
-    description = "Watch Tamil serials and shows from TamilDhool organized by series with episodes listed by date"
-    authors = listOf("YourName")
+    description = "Tamil serials and shows from TamilDhool"
+    authors = listOf("das&co")
 
     /**
      * Status int as one of the following:
