@@ -13,7 +13,7 @@ import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
-import com.lagradost.cloudstream3.newTvShowLoadResponse
+import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
@@ -270,7 +270,7 @@ class TamilDhoolProvider : MainAPI() {
             )
         )
 
-        return newTvShowLoadResponse(title, url, TvType.TvSeries, episodes) {
+        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
             this.posterUrl = poster
             this.plot = description
         }
