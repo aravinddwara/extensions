@@ -29,26 +29,26 @@ class TamilDhoolProvider : MainAPI() {
     override val hasMainPage = true
 
     // Predefined series data
-    data class SeriesInfo(val title: String, val url: String)
+    data class SeriesInfo(val title: String, val url: String, val posterUrl: String? = null)
 
     private val vijayTVSerials = listOf(
-        SeriesInfo("Chinna Marumagal", "$mainUrl/vijay-tv/vijay-tv-serial/chinna-marumagal/"),
-        SeriesInfo("Siragadikka Aasai", "$mainUrl/vijay-tv/vijay-tv-serial/siragadikka-aasai/"),
-        SeriesInfo("Ayyanar Thunai", "$mainUrl/vijay-tv/vijay-tv-serial/ayyanar-thunai/"),
-        SeriesInfo("Pandian Stores S-2", "$mainUrl/vijay-tv/vijay-tv-serial/pandian-stores-s-2/"),
-        SeriesInfo("Sakthivel", "$mainUrl/vijay-tv/vijay-tv-serial/sakthivel/"),
-        SeriesInfo("Magale En Marumagale", "$mainUrl/vijay-tv/vijay-tv-serial/magale-en-marumagale/"),
-        SeriesInfo("Sindhu Bairavi Kacheri Arambam", "$mainUrl/vijay-tv/vijay-tv-serial/sindhu-bairavi-kacheri-arambam/"),
-        SeriesInfo("Mahanadhi", "$mainUrl/vijay-tv/vijay-tv-serial/mahanadhi/"),
-        SeriesInfo("Poongatru Thirumbuma", "$mainUrl/vijay-tv/vijay-tv-serial/poongatru-thirumbuma/"),
-        SeriesInfo("Aaha Kalyanam", "$mainUrl/vijay-tv/vijay-tv-serial/aaha-kalyanam/"),
-        SeriesInfo("Dhanam", "$mainUrl/vijay-tv/vijay-tv-serial/dhanam/"),
-        SeriesInfo("Thendrale Mella Pesu", "$mainUrl/vijay-tv/vijay-tv-serial/thendrale-mella-pesu/"),
-        SeriesInfo("Kanmani Anbudan", "$mainUrl/vijay-tv/vijay-tv-serial/kanmani-anbudan/")
+        SeriesInfo("Chinna Marumagal", "$mainUrl/vijay-tv/vijay-tv-serial/chinna-marumagal/", "https://i.imgur.com/placeholder1.jpg"),
+        SeriesInfo("Siragadikka Aasai", "$mainUrl/vijay-tv/vijay-tv-serial/siragadikka-aasai/", "https://i.imgur.com/placeholder2.jpg"),
+        SeriesInfo("Ayyanar Thunai", "$mainUrl/vijay-tv/vijay-tv-serial/ayyanar-thunai/", "https://i.imgur.com/placeholder3.jpg"),
+        SeriesInfo("Pandian Stores S-2", "$mainUrl/vijay-tv/vijay-tv-serial/pandian-stores-s-2/", "https://i.imgur.com/placeholder4.jpg"),
+        SeriesInfo("Sakthivel", "$mainUrl/vijay-tv/vijay-tv-serial/sakthivel/", "https://i.imgur.com/placeholder5.jpg"),
+        SeriesInfo("Magale En Marumagale", "$mainUrl/vijay-tv/vijay-tv-serial/magale-en-marumagale/", "https://i.imgur.com/placeholder6.jpg"),
+        SeriesInfo("Sindhu Bairavi Kacheri Arambam", "$mainUrl/vijay-tv/vijay-tv-serial/sindhu-bairavi-kacheri-arambam/", "https://i.imgur.com/placeholder7.jpg"),
+        SeriesInfo("Mahanadhi", "$mainUrl/vijay-tv/vijay-tv-serial/mahanadhi/", "https://i.imgur.com/placeholder8.jpg"),
+        SeriesInfo("Poongatru Thirumbuma", "$mainUrl/vijay-tv/vijay-tv-serial/poongatru-thirumbuma/", "https://i.imgur.com/placeholder9.jpg"),
+        SeriesInfo("Aaha Kalyanam", "$mainUrl/vijay-tv/vijay-tv-serial/aaha-kalyanam/", "https://i.imgur.com/placeholder10.jpg"),
+        SeriesInfo("Dhanam", "$mainUrl/vijay-tv/vijay-tv-serial/dhanam/", "https://i.imgur.com/placeholder11.jpg"),
+        SeriesInfo("Thendrale Mella Pesu", "$mainUrl/vijay-tv/vijay-tv-serial/thendrale-mella-pesu/", "https://i.imgur.com/placeholder12.jpg"),
+        SeriesInfo("Kanmani Anbudan", "$mainUrl/vijay-tv/vijay-tv-serial/kanmani-anbudan/", "https://i.imgur.com/placeholder13.jpg")
     )
 
     private val sunTVSerials = listOf(
-        SeriesInfo("Singappenne", "$mainUrl/sun-tv/sun-tv-serial/singappenne/")
+        SeriesInfo("Singappenne", "$mainUrl/sun-tv/sun-tv-serial/singappenne/", "https://i.imgur.com/placeholder14.jpg")
         // Add more Sun TV serials here as needed
     )
 
@@ -95,35 +95,35 @@ class TamilDhoolProvider : MainAPI() {
             "vijay-tv-serials" -> {
                 for (series in vijayTVSerials) {
                     seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
-                        // You can add poster URLs here if available
+                        this.posterUrl = series.posterUrl
                     })
                 }
             }
             "sun-tv-serials" -> {
                 for (series in sunTVSerials) {
                     seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
-                        // You can add poster URLs here if available
+                        this.posterUrl = series.posterUrl
                     })
                 }
             }
             "zee-tamil-serials" -> {
                 for (series in zeeTamilSerials) {
                     seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
-                        // You can add poster URLs here if available
+                        this.posterUrl = series.posterUrl
                     })
                 }
             }
             "colors-tamil-serials" -> {
                 for (series in colorsTamilSerials) {
                     seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
-                        // You can add poster URLs here if available
+                        this.posterUrl = series.posterUrl
                     })
                 }
             }
             "kalaignar-tv-serials" -> {
                 for (series in kalaignarTVSerials) {
                     seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
-                        // You can add poster URLs here if available
+                        this.posterUrl = series.posterUrl
                     })
                 }
             }
