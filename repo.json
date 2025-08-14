@@ -1,6 +1,6 @@
 {
     "name": "Das&Co",
-    "description": "Tamil Provider ",
+    "description": "Tamil Provider",
     "manifestVersion": 1,
     "pluginLists": [
       "https://raw.githubusercontent.com/aravinddwara/extensions/builds/plugins.json"
