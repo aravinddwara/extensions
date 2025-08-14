@@ -91,35 +91,45 @@ class TamilDhoolProvider : MainAPI() {
         
         when (request.data) {
             "vijay-tv-serials" -> {
-                vijayTVSerials.forEach { (title, url) ->
+                vijayTVSerials.forEach { series ->
+                    val title = series.first
+                    val url = series.second
                     seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
             }
             "sun-tv-serials" -> {
-                sunTVSerials.forEach { (title, url) ->
+                sunTVSerials.forEach { series ->
+                    val title = series.first
+                    val url = series.second
                     seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
             }
             "zee-tamil-serials" -> {
-                zeeTamilSerials.forEach { (title, url) ->
+                zeeTamilSerials.forEach { series ->
+                    val title = series.first
+                    val url = series.second
                     seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
             }
             "colors-tamil-serials" -> {
-                colorsTamilSerials.forEach { (title, url) ->
+                colorsTamilSerials.forEach { series ->
+                    val title = series.first
+                    val url = series.second
                     seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
             }
             "kalaignar-tv-serials" -> {
-                kalaignarTVSerials.forEach { (title, url) ->
+                kalaignarTVSerials.forEach { series ->
+                    val title = series.first
+                    val url = series.second
                     seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
@@ -136,7 +146,9 @@ class TamilDhoolProvider : MainAPI() {
         // Search through all predefined series
         val allSeries = vijayTVSerials + sunTVSerials + zeeTamilSerials + colorsTamilSerials + kalaignarTVSerials
         
-        allSeries.forEach { (title, url) ->
+        allSeries.forEach { series ->
+            val title = series.first
+            val url = series.second
             if (title.contains(query, ignoreCase = true)) {
                 searchResults.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries))
             }
