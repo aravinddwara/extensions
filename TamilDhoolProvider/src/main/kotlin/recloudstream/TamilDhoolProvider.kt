@@ -29,26 +29,26 @@ class TamilDhoolProvider : MainAPI() {
     override val hasMainPage = true
 
     // Predefined series data
-    data class SeriesInfo(val title: String, val url: String, val posterUrl: String? = null, val thumbnailUrl: String? = null)
+    data class SeriesInfo(val title: String, val url: String, val posterUrl: String? = null)
 
     private val vijayTVSerials = listOf(
-        SeriesInfo("Chinna Marumagal", "$mainUrl/vijay-tv/vijay-tv-serial/chinna-marumagal/", "https://i.imgur.com/placeholder1.jpg", "https://i.imgur.com/thumb1.jpg"),
-        SeriesInfo("Siragadikka Aasai", "$mainUrl/vijay-tv/vijay-tv-serial/siragadikka-aasai/", "https://i.imgur.com/placeholder2.jpg", "https://i.imgur.com/thumb2.jpg"),
-        SeriesInfo("Ayyanar Thunai", "$mainUrl/vijay-tv/vijay-tv-serial/ayyanar-thunai/", "https://i.imgur.com/placeholder3.jpg", "https://i.imgur.com/thumb3.jpg"),
-        SeriesInfo("Pandian Stores S-2", "$mainUrl/vijay-tv/vijay-tv-serial/pandian-stores-s-2/", "https://i.imgur.com/placeholder4.jpg", "https://i.imgur.com/thumb4.jpg"),
-        SeriesInfo("Sakthivel", "$mainUrl/vijay-tv/vijay-tv-serial/sakthivel/", "https://i.imgur.com/placeholder5.jpg", "https://i.imgur.com/thumb5.jpg"),
-        SeriesInfo("Magale En Marumagale", "$mainUrl/vijay-tv/vijay-tv-serial/magale-en-marumagale/", "https://i.imgur.com/placeholder6.jpg", "https://i.imgur.com/thumb6.jpg"),
-        SeriesInfo("Sindhu Bairavi Kacheri Arambam", "$mainUrl/vijay-tv/vijay-tv-serial/sindhu-bairavi-kacheri-arambam/", "https://i.imgur.com/placeholder7.jpg", "https://i.imgur.com/thumb7.jpg"),
-        SeriesInfo("Mahanadhi", "$mainUrl/vijay-tv/vijay-tv-serial/mahanadhi/", "https://i.imgur.com/placeholder8.jpg", "https://i.imgur.com/thumb8.jpg"),
-        SeriesInfo("Poongatru Thirumbuma", "$mainUrl/vijay-tv/vijay-tv-serial/poongatru-thirumbuma/", "https://i.imgur.com/placeholder9.jpg", "https://i.imgur.com/thumb9.jpg"),
-        SeriesInfo("Aaha Kalyanam", "$mainUrl/vijay-tv/vijay-tv-serial/aaha-kalyanam/", "https://i.imgur.com/placeholder10.jpg", "https://i.imgur.com/thumb10.jpg"),
-        SeriesInfo("Dhanam", "$mainUrl/vijay-tv/vijay-tv-serial/dhanam/", "https://i.imgur.com/placeholder11.jpg", "https://i.imgur.com/thumb11.jpg"),
-        SeriesInfo("Thendrale Mella Pesu", "$mainUrl/vijay-tv/vijay-tv-serial/thendrale-mella-pesu/", "https://i.imgur.com/placeholder12.jpg", "https://i.imgur.com/thumb12.jpg"),
-        SeriesInfo("Kanmani Anbudan", "$mainUrl/vijay-tv/vijay-tv-serial/kanmani-anbudan/", "https://i.imgur.com/placeholder13.jpg", "https://i.imgur.com/thumb13.jpg")
+        SeriesInfo("Chinna Marumagal", "$mainUrl/vijay-tv/vijay-tv-serial/chinna-marumagal/", "https://i.imgur.com/placeholder1.jpg"),
+        SeriesInfo("Siragadikka Aasai", "$mainUrl/vijay-tv/vijay-tv-serial/siragadikka-aasai/", "https://i.imgur.com/placeholder2.jpg"),
+        SeriesInfo("Ayyanar Thunai", "$mainUrl/vijay-tv/vijay-tv-serial/ayyanar-thunai/", "https://i.imgur.com/placeholder3.jpg"),
+        SeriesInfo("Pandian Stores S-2", "$mainUrl/vijay-tv/vijay-tv-serial/pandian-stores-s-2/", "https://i.imgur.com/placeholder4.jpg"),
+        SeriesInfo("Sakthivel", "$mainUrl/vijay-tv/vijay-tv-serial/sakthivel/", "https://i.imgur.com/placeholder5.jpg"),
+        SeriesInfo("Magale En Marumagale", "$mainUrl/vijay-tv/vijay-tv-serial/magale-en-marumagale/", "https://i.imgur.com/placeholder6.jpg"),
+        SeriesInfo("Sindhu Bairavi Kacheri Arambam", "$mainUrl/vijay-tv/vijay-tv-serial/sindhu-bairavi-kacheri-arambam/", "https://i.imgur.com/placeholder7.jpg"),
+        SeriesInfo("Mahanadhi", "$mainUrl/vijay-tv/vijay-tv-serial/mahanadhi/", "https://i.imgur.com/placeholder8.jpg"),
+        SeriesInfo("Poongatru Thirumbuma", "$mainUrl/vijay-tv/vijay-tv-serial/poongatru-thirumbuma/", "https://i.imgur.com/placeholder9.jpg"),
+        SeriesInfo("Aaha Kalyanam", "$mainUrl/vijay-tv/vijay-tv-serial/aaha-kalyanam/", "https://i.imgur.com/placeholder10.jpg"),
+        SeriesInfo("Dhanam", "$mainUrl/vijay-tv/vijay-tv-serial/dhanam/", "https://i.imgur.com/placeholder11.jpg"),
+        SeriesInfo("Thendrale Mella Pesu", "$mainUrl/vijay-tv/vijay-tv-serial/thendrale-mella-pesu/", "https://i.imgur.com/placeholder12.jpg"),
+        SeriesInfo("Kanmani Anbudan", "$mainUrl/vijay-tv/vijay-tv-serial/kanmani-anbudan/", "https://i.imgur.com/placeholder13.jpg")
     )
 
     private val sunTVSerials = listOf(
-        SeriesInfo("Singappenne", "$mainUrl/sun-tv/sun-tv-serial/singappenne/", "https://i.imgur.com/placeholder14.jpg", "https://i.imgur.com/thumb14.jpg")
+        SeriesInfo("Singappenne", "$mainUrl/sun-tv/sun-tv-serial/singappenne/", "https://i.imgur.com/placeholder14.jpg")
         // Add more Sun TV serials here as needed
     )
 
@@ -210,15 +210,15 @@ class TamilDhoolProvider : MainAPI() {
                 val dateString = extractDateFromText(title) ?: extractDateFromText(href)
                 val episodeName = dateString ?: "Episode ${allEpisodes.size + 1}"
                 
-                // Use the series thumbnail for ALL episodes (consistent across all episodes)
-                val episodeThumbnail = currentSeries?.thumbnailUrl ?: currentSeries?.posterUrl ?: poster
+                // Get poster from element or use series poster
+                val episodePoster = element.selectFirst("img")?.attr("src") ?: poster
                 
                 allEpisodes.add(
                     Episode(
                         data = href,
                         name = episodeName, // Just the date
                         episode = null, // Will be set after sorting
-                        posterUrl = episodeThumbnail, // Use series thumbnail for consistency
+                        posterUrl = episodePoster,
                         description = "Episode aired on $episodeName"
                     )
                 )
@@ -242,16 +242,7 @@ class TamilDhoolProvider : MainAPI() {
         
         return newTvSeriesLoadResponse(seriesTitle, url, TvType.TvSeries, allEpisodes) {
             this.posterUrl = poster
-            this.backgroundPosterUrl = poster
             this.plot = description
-            this.year = 2024 // You can make this dynamic if needed
-            this.rating = null
-            this.tags = listOf("Tamil", "Serial", "Drama")
-            this.duration = null
-            this.recommendations = null
-            this.actors = null
-            this.comingSoon = false
-            this.syncData = null
         }
     }
 
