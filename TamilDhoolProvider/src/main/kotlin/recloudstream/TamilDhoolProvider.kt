@@ -12,8 +12,8 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.newHomePageResponse
-import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
+import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
@@ -35,244 +35,212 @@ class TamilDhoolProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get(request.data, timeout = 30).document
-        val episodes = mutableListOf<SearchResponse>()
-        val processedUrls = mutableSetOf<String>()
-
-        // Method 1: Look for article posts with the specific structure
-        val articles = document.select("article.post, article.regular-post")
-
-        articles.forEach { article ->
-            // Get the main episode link from entry-title
-            val titleLink = article.selectFirst("h3.entry-title a, .entry-title a")
-            // Get the poster image
-            val posterImg = article.selectFirst(".post-thumb img, img")
-
-            if (titleLink != null) {
-                val href = titleLink.attr("href")
-                val title = titleLink.text().trim()
-                val posterUrl = posterImg?.attr("src")
-
-                if (href.isNotEmpty() &&
-                    title.isNotEmpty() &&
-                    href.startsWith(mainUrl) &&
-                    title.length > 5 &&
-                    !processedUrls.contains(href)) {
-
-                    processedUrls.add(href)
-                    episodes.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                        this.posterUrl = posterUrl
-                    })
-                }
-            }
-        }
-
-        // Method 2: Fallback - Look for episode links with date patterns
-        if (episodes.isEmpty()) {
-            val episodeLinks = document.select("a[href]").filter { element ->
-                val href = element.attr("href")
-                val text = element.text().trim()
-
-                href.isNotEmpty() &&
-                text.isNotEmpty() &&
-                href.startsWith(mainUrl) &&
-                href.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) && // Contains date pattern
-                text.length > 5 &&
-                !processedUrls.contains(href)
-            }
-
-            episodeLinks.forEach { element ->
-                val href = element.attr("href")
-                val title = element.text().trim()
-                val posterUrl = element.selectFirst("img")?.attr("src")
-
-                if (!processedUrls.contains(href)) {
-                    processedUrls.add(href)
-                    episodes.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                        this.posterUrl = posterUrl
-                    })
-                }
-            }
-        }
-
-        // Method 3: Look in any div containers as final fallback
-        if (episodes.isEmpty()) {
-            val containers = document.select("div.post, div.entry, div.content")
-
-            containers.forEach { container ->
-                val linkElement = container.selectFirst("a[href]")
-                val titleElement = container.selectFirst("h1, h2, h3, h4, .title, .post-title")
-                val imageElement = container.selectFirst("img")
-
-                if (linkElement != null && titleElement != null) {
-                    val href = linkElement.attr("href")
-                    val title = titleElement.text().trim()
-                    val posterUrl = imageElement?.attr("src")
-
-                    if (href.isNotEmpty() &&
-                        title.isNotEmpty() &&
-                        href.startsWith(mainUrl) &&
-                        title.length > 5 &&
-                        !processedUrls.contains(href) &&
-                        (href.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) ||
-                         href.contains("/serial/") ||
-                         href.contains("/show/"))) {
-
-                        processedUrls.add(href)
-                        episodes.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                            this.posterUrl = posterUrl
-                        })
-                    }
-                }
-            }
-        }
-
-        return newHomePageResponse(listOf(HomePageList(request.name, episodes)), hasNext = false)
-    }
-
-    override suspend fun search(query: String): List<SearchResponse> {
-        val searchResults = mutableListOf<SearchResponse>()
-        val processedUrls = mutableSetOf<String>()
-
-        try {
-            // Search using the site's search functionality
-            val document = app.get("$mainUrl/?s=${query.replace(" ", "+")}", timeout = 30).document
-
-            // Look for article posts with the specific structure
+        val seriesMap = mutableMapOf<String, Pair<String, String?>>() // seriesUrl to (seriesName, posterUrl)
+        
+        // Scrape up to 3 pages of the category to discover more series
+        for (i in 1..3) {
+            val pageUrl = if (i == 1) request.data else "${request.data}page/$i/"
+            val document = try { app.get(pageUrl, timeout = 30).document } catch (e: Exception) { continue }
+            
             val articles = document.select("article.post, article.regular-post")
-
+            
             articles.forEach { article ->
                 val titleLink = article.selectFirst("h3.entry-title a, .entry-title a")
                 val posterImg = article.selectFirst(".post-thumb img, img")
-
+                
                 if (titleLink != null) {
-                    val href = titleLink.attr("href")
-                    val title = titleLink.text().trim()
-                    val posterUrl = posterImg?.attr("src")
-
-                    if (title.contains(query, ignoreCase = true) &&
-                        href.isNotEmpty() &&
-                        href.startsWith(mainUrl) &&
-                        title.length > 3 &&
-                        !processedUrls.contains(href)) {
-
-                        processedUrls.add(href)
-                        searchResults.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                            this.posterUrl = posterUrl
-                        })
+                    val epHref = titleLink.attr("href")
+                    val epTitle = titleLink.text().trim()
+                    val epPoster = posterImg?.attr("src")
+                    
+                    if (epHref.isNotEmpty() && epTitle.isNotEmpty() && epHref.startsWith(mainUrl)) {
+                        val seriesUrl = epHref.substringBeforeLast("/") + "/"
+                        val seriesName = epTitle.replace(Regex("\\s\\d{2}-\\d{2}-\\d{4}.*"), "").trim()
+                        
+                        if (seriesName.isNotEmpty() && !seriesMap.containsKey(seriesUrl)) {
+                            seriesMap[seriesUrl] = seriesName to epPoster
+                        }
                     }
                 }
             }
+        }
+        
+        val seriesList = seriesMap.map { (sUrl, data) ->
+            val (name, poster) = data
+            newTvSeriesSearchResponse(name, sUrl, TvType.TvSeries) {
+                this.posterUrl = poster
+            }
+        }
+        
+        return newHomePageResponse(listOf(HomePageList(request.name, seriesList)), hasNext = false)
+    }
 
-            // Fallback: Look for any links that match search query
-            if (searchResults.isEmpty()) {
+    override suspend fun search(query: String): List<SearchResponse> {
+        val seriesMap = mutableMapOf<String, Pair<String, String?>>() // seriesUrl to (seriesName, posterUrl)
+        
+        try {
+            val document = app.get("$mainUrl/?s=${query.replace(" ", "+")}", timeout = 30).document
+            
+            val articles = document.select("article.post, article.regular-post")
+            
+            articles.forEach { article ->
+                val titleLink = article.selectFirst("h3.entry-title a, .entry-title a")
+                val posterImg = article.selectFirst(".post-thumb img, img")
+                
+                if (titleLink != null) {
+                    val epHref = titleLink.attr("href")
+                    val epTitle = titleLink.text().trim()
+                    val epPoster = posterImg?.attr("src")
+                    
+                    if (epTitle.contains(query, ignoreCase = true) && epHref.isNotEmpty() && epHref.startsWith(mainUrl)) {
+                        val seriesUrl = epHref.substringBeforeLast("/") + "/"
+                        val seriesName = epTitle.replace(Regex("\\s\\d{2}-\\d{2}-\\d{4}.*"), "").trim()
+                        
+                        if (seriesName.isNotEmpty() && !seriesMap.containsKey(seriesUrl)) {
+                            seriesMap[seriesUrl] = seriesName to epPoster
+                        }
+                    }
+                }
+            }
+            
+            // Fallback if no results
+            if (seriesMap.isEmpty()) {
                 val results = document.select("a[href]").filter { element ->
                     val text = element.text().trim()
                     val href = element.attr("href")
-
-                    text.contains(query, ignoreCase = true) &&
-                    href.isNotEmpty() &&
-                    href.startsWith(mainUrl) &&
-                    text.length > 3 &&
-                    !processedUrls.contains(href)
+                    text.contains(query, ignoreCase = true) && href.isNotEmpty() && href.startsWith(mainUrl)
                 }
-
+                
                 results.forEach { element ->
-                    val href = element.attr("href")
-                    val title = element.text().trim()
-                    val posterUrl = element.selectFirst("img")?.attr("src")
-
-                    if (!processedUrls.contains(href)) {
-                        processedUrls.add(href)
-                        searchResults.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                            this.posterUrl = posterUrl
-                        })
+                    val epHref = element.attr("href")
+                    val epTitle = element.text().trim()
+                    val epPoster = element.selectFirst("img")?.attr("src")
+                    
+                    val seriesUrl = epHref.substringBeforeLast("/") + "/"
+                    val seriesName = epTitle.replace(Regex("\\s\\d{2}-\\d{2}-\\d{4}.*"), "").trim()
+                    
+                    if (seriesName.isNotEmpty() && !seriesMap.containsKey(seriesUrl)) {
+                        seriesMap[seriesUrl] = seriesName to epPoster
                     }
                 }
             }
-
-            // Alternative search method - look through main categories
-            if (searchResults.isEmpty()) {
+            
+            // Alternative: Search main categories if still empty
+            if (seriesMap.isEmpty()) {
                 val mainPageUrls = listOf(
                     "$mainUrl/vijay-tv/vijay-tv-serial/",
                     "$mainUrl/sun-tv/sun-tv-serial/",
                     "$mainUrl/zee-tamil/zee-tamil-serial/"
                 )
-
-                mainPageUrls.forEach { url ->
+                
+                mainPageUrls.forEach { catUrl ->
                     try {
-                        val doc = app.get(url, timeout = 30).document
+                        val doc = app.get(catUrl, timeout = 30).document
                         val articles = doc.select("article.post, article.regular-post")
-
+                        
                         articles.forEach { article ->
                             val titleLink = article.selectFirst("h3.entry-title a, .entry-title a")
                             val posterImg = article.selectFirst(".post-thumb img, img")
-
+                            
                             if (titleLink != null) {
-                                val href = titleLink.attr("href")
-                                val title = titleLink.text().trim()
-                                val posterUrl = posterImg?.attr("src")
-
-                                if (title.contains(query, ignoreCase = true) &&
-                                    href.isNotEmpty() &&
-                                    href.startsWith(mainUrl) &&
-                                    !processedUrls.contains(href)) {
-
-                                    processedUrls.add(href)
-                                    searchResults.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                                        this.posterUrl = posterUrl
-                                    })
+                                val epHref = titleLink.attr("href")
+                                val epTitle = titleLink.text().trim()
+                                val epPoster = posterImg?.attr("src")
+                                
+                                if (epTitle.contains(query, ignoreCase = true) && epHref.isNotEmpty() && epHref.startsWith(mainUrl)) {
+                                    val seriesUrl = epHref.substringBeforeLast("/") + "/"
+                                    val seriesName = epTitle.replace(Regex("\\s\\d{2}-\\d{2}-\\d{4}.*"), "").trim()
+                                    
+                                    if (seriesName.isNotEmpty() && !seriesMap.containsKey(seriesUrl)) {
+                                        seriesMap[seriesUrl] = seriesName to epPoster
+                                    }
                                 }
                             }
                         }
-                    } catch (e: Exception) {
-                        // Continue to next URL if one fails
-                    }
+                    } catch (e: Exception) {}
                 }
             }
-        } catch (e: Exception) {
-            // Return empty list if search fails
+        } catch (e: Exception) {}
+        
+        val seriesList = seriesMap.map { (sUrl, data) ->
+            val (name, poster) = data
+            newTvSeriesSearchResponse(name, sUrl, TvType.TvSeries) {
+                this.posterUrl = poster
+            }
         }
-
-        return searchResults.take(50) // Limit results
+        
+        return seriesList.take(50)
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url, timeout = 30).document
-
-        // Extract title
-        val title = document.selectFirst("title")?.text()?.let { titleText ->
-            titleText.substringBefore(" - TamilDhool")
-                .substringBefore(" - Tamil")
-                .substringBefore(" Online")
-                .trim()
-        } ?: document.selectFirst("h1, h2, h3")?.text()?.trim()
-        ?: url.substringAfterLast("/").replace("-", " ").replaceFirstChar { it.titlecase() }
-
-        // Extract poster
-        val poster = document.selectFirst("img[src*='tamildhool'], meta[property='og:image']")?.attr("content")
-            ?: document.selectFirst("img[src*='tamildhool']")?.attr("src")
-            ?: document.selectFirst("img")?.attr("src")
-
-        // Extract description
-        val description = document.selectFirst("meta[name='description']")?.attr("content")
-            ?: document.selectFirst("meta[property='og:description']")?.attr("content")
-            ?: document.selectFirst("p")?.text()
-            ?: "Tamil serial episode"
-
-        // Treat as TV series with a single episode
-        val episodes = listOf(
-            Episode(
-                data = url,
-                name = title,
-                description = description,
-                posterUrl = poster
-            )
-        )
-
-        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.plot = description
+        var currentUrl = url
+        val episodes = mutableListOf<Episode>()
+        val maxEpisodes = 200 // Limit to prevent timeouts on very long series
+        
+        try {
+            val firstDoc = app.get(url, timeout = 30).document
+            
+            // Extract series title
+            val title = firstDoc.selectFirst("title")?.text()?.let { titleText ->
+                titleText.substringBefore(" - TamilDhool").trim()
+            } ?: url.substringAfterLast("/").substringBeforeLast("/").replace("-", " ").replaceFirstChar { it.titlecase() }
+            
+            // Extract poster
+            var poster = firstDoc.selectFirst("img[src*='tamildhool'], meta[property='og:image']")?.attr("content")
+                ?: firstDoc.selectFirst("img[src*='tamildhool']")?.attr("src")
+                ?: firstDoc.selectFirst("img")?.attr("src")
+            
+            // Extract description
+            val description = firstDoc.selectFirst("meta[name='description']")?.attr("content")
+                ?: firstDoc.selectFirst("meta[property='og:description']")?.attr("content")
+                ?: firstDoc.selectFirst("p")?.text()
+                ?: "Tamil serial"
+            
+            // Loop through all pagination pages
+            while (episodes.size < maxEpisodes) {
+                val document = app.get(currentUrl, timeout = 30).document
+                
+                val articles = document.select("article.post, article.regular-post")
+                
+                if (articles.isEmpty()) break
+                
+                articles.forEach { article ->
+                    val titleLink = article.selectFirst("h3.entry-title a, .entry-title a")
+                    val posterImg = article.selectFirst(".post-thumb img, img")
+                    
+                    if (titleLink != null) {
+                        val epHref = titleLink.attr("href")
+                        val epFullTitle = titleLink.text().trim()
+                        val epPoster = posterImg?.attr("src")
+                        
+                        // Extract date as episode name
+                        val dateMatch = Regex("\\d{2}-\\d{2}-\\d{4}").find(epFullTitle)
+                        val epName = dateMatch?.value ?: epFullTitle.takeIf { it.isNotEmpty() } ?: "Episode"
+                        
+                        if (epHref.isNotEmpty() && epHref.startsWith(mainUrl)) {
+                            episodes.add(Episode(epHref, name = epName, posterUrl = epPoster))
+                        }
+                    }
+                }
+                
+                val nextUrl = document.selectFirst("a.next, .next")?.attr("href")
+                if (nextUrl.isNullOrEmpty()) break
+                currentUrl = nextUrl
+            }
+            
+            // Sort episodes by date descending (convert dd-MM-yyyy to yyyy-MM-dd for comparison)
+            val sortedEpisodes = episodes.sortedByDescending { ep ->
+                Regex("\\d{2}-\\d{2}-\\d{4}").find(ep.name ?: "")?.value?.split("-")?.let { parts ->
+                    "${parts[2]}-${parts[1]}-${parts[0]}"
+                } ?: ""
+            }
+            
+            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, sortedEpisodes) {
+                this.posterUrl = poster
+                this.plot = description
+            }
+        } catch (e: Exception) {
+            return null
         }
     }
 
@@ -283,10 +251,10 @@ class TamilDhoolProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         var foundLinks = false
-
+        
         try {
             val document = app.get(data, timeout = 30).document
-
+            
             // Method 1: Look for TamilBliss links with video IDs
             val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
             tamilBlissLinks.forEach { link ->
@@ -300,7 +268,7 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
             // Method 2: Look for Dailymotion thumbnail images
             val dailymotionThumbnails = document.select("img[src*='dailymotion.com']")
             dailymotionThumbnails.forEach { img ->
@@ -314,21 +282,21 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
             // Method 3: Look for iframe embeds
             val iframes = document.select("iframe[src]")
             iframes.forEach { iframe ->
                 val src = iframe.attr("src")
                 if (src.isNotEmpty()) {
                     val fullUrl = if (src.startsWith("//")) "https:$src" else src
-                    if (fullUrl.contains("dailymotion") || fullUrl.contains("youtube") ||
+                    if (fullUrl.contains("dailymotion") || fullUrl.contains("youtube") || 
                         fullUrl.contains("vimeo") || fullUrl.contains("player")) {
                         loadExtractor(fullUrl, subtitleCallback, callback)
                         foundLinks = true
                     }
                 }
             }
-
+            
             // Method 4: Search HTML content for video IDs
             val htmlContent = document.html()
             val videoIdPatterns = listOf(
@@ -338,7 +306,7 @@ class TamilDhoolProvider : MainAPI() {
                 Regex("dailymotion\\.com/video/([a-zA-Z0-9]+)"),
                 Regex("thumbnail/video/([a-zA-Z0-9]+)")
             )
-
+            
             videoIdPatterns.forEach { pattern ->
                 val matches = pattern.findAll(htmlContent)
                 matches.forEach { match ->
@@ -349,7 +317,7 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
             // Method 5: Look for direct video links
             val videoElements = document.select("video source[src], a[href*='.mp4'], a[href*='.m3u8']")
             videoElements.forEach { element ->
@@ -359,7 +327,7 @@ class TamilDhoolProvider : MainAPI() {
                     foundLinks = true
                 }
             }
-
+            
             // Method 6: Look for prefetch or preload links
             val prefetchLinks = document.select("link[href*='dai.ly'], link[href*='dailymotion']")
             prefetchLinks.forEach { link ->
@@ -373,12 +341,11 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
         } catch (e: Exception) {
-            // Log error but don't crash
             return false
         }
-
+        
         return foundLinks
     }
 }
