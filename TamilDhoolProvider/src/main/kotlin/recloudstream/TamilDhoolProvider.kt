@@ -29,36 +29,38 @@ class TamilDhoolProvider : MainAPI() {
     override val hasMainPage = true
 
     // Predefined series data
+    data class SeriesInfo(val title: String, val url: String)
+
     private val vijayTVSerials = listOf(
-        Pair("Chinna Marumagal", "$mainUrl/vijay-tv/vijay-tv-serial/chinna-marumagal/"),
-        Pair("Siragadikka Aasai", "$mainUrl/vijay-tv/vijay-tv-serial/siragadikka-aasai/"),
-        Pair("Ayyanar Thunai", "$mainUrl/vijay-tv/vijay-tv-serial/ayyanar-thunai/"),
-        Pair("Pandian Stores S-2", "$mainUrl/vijay-tv/vijay-tv-serial/pandian-stores-s-2/"),
-        Pair("Sakthivel", "$mainUrl/vijay-tv/vijay-tv-serial/sakthivel/"),
-        Pair("Magale En Marumagale", "$mainUrl/vijay-tv/vijay-tv-serial/magale-en-marumagale/"),
-        Pair("Sindhu Bairavi Kacheri Arambam", "$mainUrl/vijay-tv/vijay-tv-serial/sindhu-bairavi-kacheri-arambam/"),
-        Pair("Mahanadhi", "$mainUrl/vijay-tv/vijay-tv-serial/mahanadhi/"),
-        Pair("Poongatru Thirumbuma", "$mainUrl/vijay-tv/vijay-tv-serial/poongatru-thirumbuma/"),
-        Pair("Aaha Kalyanam", "$mainUrl/vijay-tv/vijay-tv-serial/aaha-kalyanam/"),
-        Pair("Dhanam", "$mainUrl/vijay-tv/vijay-tv-serial/dhanam/"),
-        Pair("Thendrale Mella Pesu", "$mainUrl/vijay-tv/vijay-tv-serial/thendrale-mella-pesu/"),
-        Pair("Kanmani Anbudan", "$mainUrl/vijay-tv/vijay-tv-serial/kanmani-anbudan/")
+        SeriesInfo("Chinna Marumagal", "$mainUrl/vijay-tv/vijay-tv-serial/chinna-marumagal/"),
+        SeriesInfo("Siragadikka Aasai", "$mainUrl/vijay-tv/vijay-tv-serial/siragadikka-aasai/"),
+        SeriesInfo("Ayyanar Thunai", "$mainUrl/vijay-tv/vijay-tv-serial/ayyanar-thunai/"),
+        SeriesInfo("Pandian Stores S-2", "$mainUrl/vijay-tv/vijay-tv-serial/pandian-stores-s-2/"),
+        SeriesInfo("Sakthivel", "$mainUrl/vijay-tv/vijay-tv-serial/sakthivel/"),
+        SeriesInfo("Magale En Marumagale", "$mainUrl/vijay-tv/vijay-tv-serial/magale-en-marumagale/"),
+        SeriesInfo("Sindhu Bairavi Kacheri Arambam", "$mainUrl/vijay-tv/vijay-tv-serial/sindhu-bairavi-kacheri-arambam/"),
+        SeriesInfo("Mahanadhi", "$mainUrl/vijay-tv/vijay-tv-serial/mahanadhi/"),
+        SeriesInfo("Poongatru Thirumbuma", "$mainUrl/vijay-tv/vijay-tv-serial/poongatru-thirumbuma/"),
+        SeriesInfo("Aaha Kalyanam", "$mainUrl/vijay-tv/vijay-tv-serial/aaha-kalyanam/"),
+        SeriesInfo("Dhanam", "$mainUrl/vijay-tv/vijay-tv-serial/dhanam/"),
+        SeriesInfo("Thendrale Mella Pesu", "$mainUrl/vijay-tv/vijay-tv-serial/thendrale-mella-pesu/"),
+        SeriesInfo("Kanmani Anbudan", "$mainUrl/vijay-tv/vijay-tv-serial/kanmani-anbudan/")
     )
 
     private val sunTVSerials = listOf(
-        Pair("Singappenne", "$mainUrl/sun-tv/sun-tv-serial/singappenne/"),
+        SeriesInfo("Singappenne", "$mainUrl/sun-tv/sun-tv-serial/singappenne/")
         // Add more Sun TV serials here as needed
     )
 
-    private val zeeTamilSerials = listOf(
+    private val zeeTamilSerials = listOf<SeriesInfo>(
         // Add Zee Tamil serials here as needed
     )
 
-    private val colorsTamilSerials = listOf(
+    private val colorsTamilSerials = listOf<SeriesInfo>(
         // Add Colors Tamil serials here as needed
     )
 
-    private val kalaignarTVSerials = listOf(
+    private val kalaignarTVSerials = listOf<SeriesInfo>(
         // Add Kalaignar TV serials here as needed
     )
 
@@ -91,46 +93,36 @@ class TamilDhoolProvider : MainAPI() {
         
         when (request.data) {
             "vijay-tv-serials" -> {
-                vijayTVSerials.forEach { series ->
-                    val title = series.first
-                    val url = series.second
-                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                for (series in vijayTVSerials) {
+                    seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
             }
             "sun-tv-serials" -> {
-                sunTVSerials.forEach { series ->
-                    val title = series.first
-                    val url = series.second
-                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                for (series in sunTVSerials) {
+                    seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
             }
             "zee-tamil-serials" -> {
-                zeeTamilSerials.forEach { series ->
-                    val title = series.first
-                    val url = series.second
-                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                for (series in zeeTamilSerials) {
+                    seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
             }
             "colors-tamil-serials" -> {
-                colorsTamilSerials.forEach { series ->
-                    val title = series.first
-                    val url = series.second
-                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                for (series in colorsTamilSerials) {
+                    seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
             }
             "kalaignar-tv-serials" -> {
-                kalaignarTVSerials.forEach { series ->
-                    val title = series.first
-                    val url = series.second
-                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                for (series in kalaignarTVSerials) {
+                    seriesList.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries) {
                         // You can add poster URLs here if available
                     })
                 }
@@ -144,13 +136,16 @@ class TamilDhoolProvider : MainAPI() {
         val searchResults = mutableListOf<SearchResponse>()
         
         // Search through all predefined series
-        val allSeries = vijayTVSerials + sunTVSerials + zeeTamilSerials + colorsTamilSerials + kalaignarTVSerials
+        val allSeries = mutableListOf<SeriesInfo>()
+        allSeries.addAll(vijayTVSerials)
+        allSeries.addAll(sunTVSerials)
+        allSeries.addAll(zeeTamilSerials)
+        allSeries.addAll(colorsTamilSerials)
+        allSeries.addAll(kalaignarTVSerials)
         
-        allSeries.forEach { series ->
-            val title = series.first
-            val url = series.second
-            if (title.contains(query, ignoreCase = true)) {
-                searchResults.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries))
+        for (series in allSeries) {
+            if (series.title.contains(query, ignoreCase = true)) {
+                searchResults.add(newTvSeriesSearchResponse(series.title, series.url, TvType.TvSeries))
             }
         }
         
@@ -190,7 +185,7 @@ class TamilDhoolProvider : MainAPI() {
         
         // Process episodes
         val processedUrls = mutableSetOf<String>()
-        episodeLinks.forEach { element ->
+        for (element in episodeLinks) {
             val href = element.attr("href")
             val title = element.text().trim()
             
@@ -227,8 +222,8 @@ class TamilDhoolProvider : MainAPI() {
         }
         
         // Number episodes after sorting
-        allEpisodes.forEachIndexed { index, episode ->
-            episode.episode = index + 1
+        for (i in allEpisodes.indices) {
+            allEpisodes[i].episode = i + 1
         }
         
         return newTvSeriesLoadResponse(seriesTitle, url, TvType.TvSeries, allEpisodes) {
@@ -250,7 +245,7 @@ class TamilDhoolProvider : MainAPI() {
             
             // Method 1: Look for TamilBliss links with video IDs
             val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
-            tamilBlissLinks.forEach { link ->
+            for (link in tamilBlissLinks) {
                 val href = link.attr("href")
                 val videoIdMatch = Regex("video=([a-zA-Z0-9]+)").find(href)
                 if (videoIdMatch != null) {
@@ -264,7 +259,7 @@ class TamilDhoolProvider : MainAPI() {
             
             // Method 2: Look for Dailymotion thumbnail images
             val dailymotionThumbnails = document.select("img[src*='dailymotion.com']")
-            dailymotionThumbnails.forEach { img ->
+            for (img in dailymotionThumbnails) {
                 val src = img.attr("src")
                 val videoIdMatch = Regex("video/([a-zA-Z0-9]+)").find(src)
                 if (videoIdMatch != null) {
@@ -278,7 +273,7 @@ class TamilDhoolProvider : MainAPI() {
             
             // Method 3: Look for iframe embeds
             val iframes = document.select("iframe[src]")
-            iframes.forEach { iframe ->
+            for (iframe in iframes) {
                 val src = iframe.attr("src")
                 if (src.isNotEmpty()) {
                     val fullUrl = if (src.startsWith("//")) "https:$src" else src
@@ -300,9 +295,9 @@ class TamilDhoolProvider : MainAPI() {
                 Regex("thumbnail/video/([a-zA-Z0-9]+)")
             )
             
-            videoIdPatterns.forEach { pattern ->
+            for (pattern in videoIdPatterns) {
                 val matches = pattern.findAll(htmlContent)
-                matches.forEach { match ->
+                for (match in matches) {
                     val videoId = match.groups[1]?.value
                     if (videoId != null && videoId.length >= 6) {
                         loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
@@ -313,7 +308,7 @@ class TamilDhoolProvider : MainAPI() {
             
             // Method 5: Look for direct video links
             val videoElements = document.select("video source[src], a[href*='.mp4'], a[href*='.m3u8']")
-            videoElements.forEach { element ->
+            for (element in videoElements) {
                 val src = element.attr("src").ifEmpty { element.attr("href") }
                 if (src.isNotEmpty()) {
                     loadExtractor(src, subtitleCallback, callback)
@@ -323,7 +318,7 @@ class TamilDhoolProvider : MainAPI() {
             
             // Method 6: Look for prefetch or preload links
             val prefetchLinks = document.select("link[href*='dai.ly'], link[href*='dailymotion']")
-            prefetchLinks.forEach { link ->
+            for (link in prefetchLinks) {
                 val href = link.attr("href")
                 val videoIdMatch = Regex("dai\\.ly/([a-zA-Z0-9]+)").find(href)
                 if (videoIdMatch != null) {
