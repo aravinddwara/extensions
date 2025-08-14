@@ -28,14 +28,46 @@ class TamilDhoolProvider : MainAPI() {
     override var lang = "ta"
     override val hasMainPage = true
 
+    // Predefined series data
+    private val vijayTVSerials = listOf(
+        Pair("Chinna Marumagal", "$mainUrl/vijay-tv/vijay-tv-serial/chinna-marumagal/"),
+        Pair("Siragadikka Aasai", "$mainUrl/vijay-tv/vijay-tv-serial/siragadikka-aasai/"),
+        Pair("Ayyanar Thunai", "$mainUrl/vijay-tv/vijay-tv-serial/ayyanar-thunai/"),
+        Pair("Pandian Stores S-2", "$mainUrl/vijay-tv/vijay-tv-serial/pandian-stores-s-2/"),
+        Pair("Sakthivel", "$mainUrl/vijay-tv/vijay-tv-serial/sakthivel/"),
+        Pair("Magale En Marumagale", "$mainUrl/vijay-tv/vijay-tv-serial/magale-en-marumagale/"),
+        Pair("Sindhu Bairavi Kacheri Arambam", "$mainUrl/vijay-tv/vijay-tv-serial/sindhu-bairavi-kacheri-arambam/"),
+        Pair("Mahanadhi", "$mainUrl/vijay-tv/vijay-tv-serial/mahanadhi/"),
+        Pair("Poongatru Thirumbuma", "$mainUrl/vijay-tv/vijay-tv-serial/poongatru-thirumbuma/"),
+        Pair("Aaha Kalyanam", "$mainUrl/vijay-tv/vijay-tv-serial/aaha-kalyanam/"),
+        Pair("Dhanam", "$mainUrl/vijay-tv/vijay-tv-serial/dhanam/"),
+        Pair("Thendrale Mella Pesu", "$mainUrl/vijay-tv/vijay-tv-serial/thendrale-mella-pesu/"),
+        Pair("Kanmani Anbudan", "$mainUrl/vijay-tv/vijay-tv-serial/kanmani-anbudan/")
+    )
+
+    private val sunTVSerials = listOf(
+        Pair("Singappenne", "$mainUrl/sun-tv/sun-tv-serial/singappenne/"),
+        // Add more Sun TV serials here as needed
+    )
+
+    private val zeeTamilSerials = listOf(
+        // Add Zee Tamil serials here as needed
+    )
+
+    private val colorsTamilSerials = listOf(
+        // Add Colors Tamil serials here as needed
+    )
+
+    private val kalaignarTVSerials = listOf(
+        // Add Kalaignar TV serials here as needed
+    )
+
     override val mainPage = mainPageOf(
-        "$mainUrl/vijay-tv/vijay-tv-serial/" to "Vijay TV Serials",
-        "$mainUrl/sun-tv/sun-tv-serial/" to "Sun TV Serials",
-        "$mainUrl/zee-tamil/zee-tamil-serial/" to "Zee Tamil Serials",
-        "$mainUrl/colors-tamil/colors-tamil-serial/" to "Colors Tamil Serials",
-        "$mainUrl/kalaignar-tv/kalaignar-tv-serial/" to "Kalaignar TV Serials",
-        "$mainUrl/vijay-tv/vijay-tv-show/" to "Vijay TV Shows",
-        "$mainUrl/sun-tv/sun-tv-show/" to "Sun TV Shows"
+        "vijay-tv-serials" to "Vijay TV Serials",
+        "sun-tv-serials" to "Sun TV Serials",
+        "zee-tamil-serials" to "Zee Tamil Serials",
+        "colors-tamil-serials" to "Colors Tamil Serials",
+        "kalaignar-tv-serials" to "Kalaignar TV Serials"
     )
 
     // Helper function to parse date for sorting
@@ -48,79 +80,49 @@ class TamilDhoolProvider : MainAPI() {
         }
     }
 
-    // Helper function to extract date from episode title
-    private fun extractDateFromTitle(title: String): String? {
+    // Helper function to extract date from episode title or URL
+    private fun extractDateFromText(text: String): String? {
         val datePattern = Regex("(\\d{1,2}-\\d{1,2}-\\d{4})")
-        return datePattern.find(title)?.groups?.get(1)?.value
+        return datePattern.find(text)?.groups?.get(1)?.value
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get(request.data).document
         val seriesList = mutableListOf<SearchResponse>()
-        val processedUrls = mutableSetOf<String>()
         
-        // Look for series main page links in the category pages
-        val seriesLinks = document.select("a[href]").filter { element ->
-            val href = element.attr("href")
-            val text = element.text().trim()
-            
-            href.isNotEmpty() && 
-            text.isNotEmpty() && 
-            href.startsWith(mainUrl) &&
-            // Series main pages don't have dates in URLs
-            !href.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) &&
-            // Must be in the right category structure
-            (href.contains("/vijay-tv-serial/") || 
-             href.contains("/sun-tv-serial/") || 
-             href.contains("/zee-tamil-serial/") ||
-             href.contains("/colors-tamil-serial/") ||
-             href.contains("/kalaignar-tv-serial/") ||
-             href.contains("/vijay-tv-show/") ||
-             href.contains("/sun-tv-show/")) &&
-            href != request.data && // Not the category page itself
-            text.length > 3 &&
-            !processedUrls.contains(href)
-        }
-        
-        seriesLinks.forEach { element ->
-            val href = element.attr("href")
-            val title = element.text().trim()
-            val posterUrl = element.selectFirst("img")?.attr("src")
-            
-            if (!processedUrls.contains(href)) {
-                processedUrls.add(href)
-                seriesList.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                    this.posterUrl = posterUrl
-                })
+        when (request.data) {
+            "vijay-tv-serials" -> {
+                vijayTVSerials.forEach { (title, url) ->
+                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                        // You can add poster URLs here if available
+                    })
+                }
             }
-        }
-        
-        // Fallback: Look in article structures
-        if (seriesList.isEmpty()) {
-            val articles = document.select("article.post, article.regular-post")
-            
-            articles.forEach { article ->
-                val titleLink = article.selectFirst("h3.entry-title a, .entry-title a")
-                val posterImg = article.selectFirst(".post-thumb img, img")
-                
-                if (titleLink != null) {
-                    val href = titleLink.attr("href")
-                    val title = titleLink.text().trim()
-                    val posterUrl = posterImg?.attr("src")
-                    
-                    // Only get series main pages (no dates in URL)
-                    if (href.isNotEmpty() && 
-                        title.isNotEmpty() && 
-                        href.startsWith(mainUrl) &&
-                        !href.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) &&
-                        title.length > 3 &&
-                        !processedUrls.contains(href)) {
-                        
-                        processedUrls.add(href)
-                        seriesList.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                            this.posterUrl = posterUrl
-                        })
-                    }
+            "sun-tv-serials" -> {
+                sunTVSerials.forEach { (title, url) ->
+                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                        // You can add poster URLs here if available
+                    })
+                }
+            }
+            "zee-tamil-serials" -> {
+                zeeTamilSerials.forEach { (title, url) ->
+                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                        // You can add poster URLs here if available
+                    })
+                }
+            }
+            "colors-tamil-serials" -> {
+                colorsTamilSerials.forEach { (title, url) ->
+                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                        // You can add poster URLs here if available
+                    })
+                }
+            }
+            "kalaignar-tv-serials" -> {
+                kalaignarTVSerials.forEach { (title, url) ->
+                    seriesList.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries) {
+                        // You can add poster URLs here if available
+                    })
                 }
             }
         }
@@ -130,112 +132,37 @@ class TamilDhoolProvider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val searchResults = mutableListOf<SearchResponse>()
-        val processedUrls = mutableSetOf<String>()
         
-        try {
-            // Search through all main page categories to find matching series
-            val mainPageUrls = listOf(
-                "$mainUrl/vijay-tv/vijay-tv-serial/",
-                "$mainUrl/sun-tv/sun-tv-serial/",
-                "$mainUrl/zee-tamil/zee-tamil-serial/",
-                "$mainUrl/colors-tamil/colors-tamil-serial/",
-                "$mainUrl/kalaignar-tv/kalaignar-tv-serial/",
-                "$mainUrl/vijay-tv/vijay-tv-show/",
-                "$mainUrl/sun-tv/sun-tv-show/"
-            )
-            
-            mainPageUrls.forEach { pageUrl ->
-                try {
-                    val document = app.get(pageUrl, timeout = 10).document
-                    
-                    // Look for series main page links
-                    val seriesLinks = document.select("a[href]").filter { element ->
-                        val href = element.attr("href")
-                        val text = element.text().trim()
-                        
-                        text.contains(query, ignoreCase = true) &&
-                        href.isNotEmpty() && 
-                        href.startsWith(mainUrl) &&
-                        !href.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) && // No dates in URL
-                        href != pageUrl &&
-                        text.length > 3 &&
-                        !processedUrls.contains(href)
-                    }
-                    
-                    seriesLinks.forEach { element ->
-                        val href = element.attr("href")
-                        val title = element.text().trim()
-                        val posterUrl = element.selectFirst("img")?.attr("src")
-                        
-                        if (!processedUrls.contains(href)) {
-                            processedUrls.add(href)
-                            searchResults.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                                this.posterUrl = posterUrl
-                            })
-                        }
-                    }
-                } catch (e: Exception) {
-                    // Continue to next page if one fails
-                }
+        // Search through all predefined series
+        val allSeries = vijayTVSerials + sunTVSerials + zeeTamilSerials + colorsTamilSerials + kalaignarTVSerials
+        
+        allSeries.forEach { (title, url) ->
+            if (title.contains(query, ignoreCase = true)) {
+                searchResults.add(newTvSeriesSearchResponse(title, url, TvType.TvSeries))
             }
-            
-            // Also search using the site's search functionality
-            val searchDocument = app.get("$mainUrl/?s=${query.replace(" ", "+")}", timeout = 10).document
-            val articles = searchDocument.select("article.post, article.regular-post")
-            
-            articles.forEach { article ->
-                val titleLink = article.selectFirst("h3.entry-title a, .entry-title a")
-                val posterImg = article.selectFirst(".post-thumb img, img")
-                
-                if (titleLink != null) {
-                    val href = titleLink.attr("href")
-                    val title = titleLink.text().trim()
-                    val posterUrl = posterImg?.attr("src")
-                    
-                    if (title.contains(query, ignoreCase = true) && 
-                        href.isNotEmpty() && 
-                        href.startsWith(mainUrl) &&
-                        !href.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) && // Series main page, not episode
-                        title.length > 3 &&
-                        !processedUrls.contains(href)) {
-                        
-                        processedUrls.add(href)
-                        searchResults.add(newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
-                            this.posterUrl = posterUrl
-                        })
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            // Return what we have if search fails
         }
         
         return searchResults.take(50)
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        // The URL is now the series main page (e.g., .../siragadikka-aasai/)
+        // The URL is the series main page (e.g., .../siragadikka-aasai/)
         val document = app.get(url).document
         val allEpisodes = mutableListOf<Episode>()
         
-        // Extract series title
-        val seriesTitle = document.selectFirst("title")?.text()?.let { titleText ->
-            titleText.substringBefore(" - TamilDhool")
-                .substringBefore(" - Tamil")
-                .substringBefore(" Online")
-                .trim()
-        } ?: url.substringAfterLast("/").replace("-", " ").replaceFirstChar { it.titlecase() }
+        // Extract series title from URL path
+        val seriesTitle = url.substringAfterLast("/").substringBeforeLast("/")
+            .replace("-", " ")
+            .split(" ")
+            .joinToString(" ") { word -> 
+                word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            }
         
-        // Extract poster
-        val poster = document.selectFirst("img[src*='tamildhool'], meta[property='og:image']")?.attr("content")
-            ?: document.selectFirst("img[src*='tamildhool']")?.attr("src")
-            ?: document.selectFirst("img")?.attr("src")
+        // Extract poster - look for any image on the page
+        val poster = document.selectFirst("img")?.attr("src")
         
-        // Extract description
-        val description = document.selectFirst("meta[name='description']")?.attr("content")
-            ?: document.selectFirst("meta[property='og:description']")?.attr("content")
-            ?: document.selectFirst("p")?.text()
-            ?: "Tamil serial episodes"
+        // Description
+        val description = "Tamil serial episodes"
         
         // Find all episode links on this series page
         val episodeLinks = document.select("a[href]").filter { element ->
@@ -246,33 +173,45 @@ class TamilDhoolProvider : MainAPI() {
             text.isNotEmpty() && 
             href.startsWith(url) && // Episode URLs start with series URL
             href.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) && // Contains date pattern
-            text.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) && // Title also contains date
-            text.length > 10
+            text.contains(Regex("\\d{2}-\\d{2}-\\d{4}")) // Title also contains date
         }
         
-        episodeLinks.forEachIndexed { index, element ->
+        // Process episodes
+        val processedUrls = mutableSetOf<String>()
+        episodeLinks.forEach { element ->
             val href = element.attr("href")
             val title = element.text().trim()
-            val posterUrl = element.selectFirst("img")?.attr("src") ?: poster
             
-            // Extract date from title for sorting
-            val dateString = extractDateFromTitle(title)
-            
-            allEpisodes.add(
-                Episode(
-                    data = href,
-                    name = title,
-                    episode = null, // Will be set after sorting
-                    posterUrl = posterUrl,
-                    description = if (dateString != null) "Episode aired on $dateString" else "Episode"
+            if (!processedUrls.contains(href)) {
+                processedUrls.add(href)
+                
+                // Extract date from title or URL for episode name
+                val dateString = extractDateFromText(title) ?: extractDateFromText(href)
+                val episodeName = dateString ?: "Episode ${allEpisodes.size + 1}"
+                
+                // Get poster from element or use series poster
+                val episodePoster = element.selectFirst("img")?.attr("src") ?: poster
+                
+                allEpisodes.add(
+                    Episode(
+                        data = href,
+                        name = episodeName, // Just the date
+                        episode = null, // Will be set after sorting
+                        posterUrl = episodePoster,
+                        description = "Episode aired on $episodeName"
+                    )
                 )
-            )
+            }
         }
         
         // Sort episodes by date (newest first)
         allEpisodes.sortByDescending { episode ->
-            val dateString = extractDateFromTitle(episode.name ?: "")
-            if (dateString != null) parseDate(dateString) else 0L
+            val dateString = episode.name
+            if (dateString != null && dateString.matches(Regex("\\d{1,2}-\\d{1,2}-\\d{4}"))) {
+                parseDate(dateString)
+            } else {
+                0L
+            }
         }
         
         // Number episodes after sorting
