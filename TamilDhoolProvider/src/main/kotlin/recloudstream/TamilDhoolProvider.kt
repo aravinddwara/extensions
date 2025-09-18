@@ -42,7 +42,13 @@ class TamilDhoolProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
-        val title = this.selectFirst("h3.entry-title a")?.text() ?: return null
+        
+        val rawTitle = this.selectFirst("h3.entry-title a")?.text() ?: return null
+        val cleanedTitle = rawTitle
+        .replace(Regex("(?i)\\s*(Vijay\\s*Tv|Sun\\s*Tv|Zee\\s*Tamil|Kalaignar\\s*Tv)\\s*(Serial|Show)"), "")
+        .replace(Regex("(?i)\\s*\\|\\s*On\\s*(Vijay\\s*Tv|Sun\\s*Tv|Zee\\s*Tamil|Kalaignar\\s*Tv)"), "")
+        .trim()
+        
         val href = this.selectFirst("h3.entry-title a")?.attr("href") ?: return null
         val posterUrl = this.selectFirst(".post-thumb img")?.attr("src")
 
