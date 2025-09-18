@@ -32,13 +32,9 @@ class TamilDhoolProvider : MainAPI() {
         val title = this.selectFirst("h3.entry-title a")?.text() ?: return null
         val href = this.selectFirst("h3.entry-title a")?.attr("href") ?: return null
         val posterUrl = this.selectFirst(".post-thumb img")?.attr("src")
-        val category = this.selectFirst(".cat-links a")?.text()
 
-        return newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
+        return newMovieSearchResponse(title, href, TvType.TvSeries) {
             this.posterUrl = posterUrl
-            if (category != null) {
-                this.tags = listOf(category)
-            }
         }
     }
 
@@ -57,36 +53,9 @@ class TamilDhoolProvider : MainAPI() {
             Regex("background-image:url\\('(.*?)'\\)").find(it)?.groupValues?.get(1)
         } ?: doc.selectFirst("img")?.attr("src")
         
-        val category = doc.selectFirst(".entry-category a")?.text()
-        val tags = listOfNotNull(category)
-        
-        // Extract show name and episode info from title
-        val showName = title.split(" \\d".toRegex()).firstOrNull() ?: title
-        val episodes = listOf(
-            Episode(
-                data = url,
-                name = title,
-                episode = extractEpisodeNumber(title)
-            )
-        )
-
-        return newTvSeriesLoadResponse(showName, url, TvType.TvSeries, episodes) {
+        return newMovieLoadResponse(title, url, TvType.TvSeries, url) {
             this.plot = description
             this.posterUrl = posterUrl
-            this.tags = tags
-        }
-    }
-
-    private fun extractEpisodeNumber(title: String): Int? {
-        val regex = "\\d{2}-\\d{2}-\\d{4}".toRegex()
-        val match = regex.find(title)
-        return match?.let {
-            // Convert date to episode number (simple approach)
-            val dateParts = it.value.split("-")
-            val day = dateParts[0].toIntOrNull() ?: 1
-            val month = dateParts[1].toIntOrNull() ?: 1
-            // Create a simple episode number from date
-            (month * 100) + day
         }
     }
 
