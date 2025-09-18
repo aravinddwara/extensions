@@ -60,9 +60,9 @@ class TamilDhoolProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val doc = app.get(url).document
         
-        val title = doc.selectFirst("h1.entry-title")?.text() ?: return null
-        val description = doc.select(".entry-content p").firstOrNull()?.text()
-        val posterUrl = doc.selectFirst(".entry-cover")?.attr("style")?.let {
+       val title = doc.selectFirst("h1.entry-title")?.text() ?: return null
+       val description = doc.select("h2.wp-block-heading:has(span#Plot) + p").firstOrNull()?.text()
+       val posterUrl = doc.selectFirst(".entry-cover")?.attr("style")?.let {
             Regex("background-image:url\\('(.*?)'\\)").find(it)?.groupValues?.get(1)
         } ?: doc.selectFirst("img")?.attr("src")
         
