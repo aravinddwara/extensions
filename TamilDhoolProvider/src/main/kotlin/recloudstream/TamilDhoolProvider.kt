@@ -1,7 +1,20 @@
 package recloudstream
 
-import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.HomePageList
+import com.lagradost.cloudstream3.HomePageResponse
+import com.lagradost.cloudstream3.LoadResponse
+import com.lagradost.cloudstream3.MainAPI
+import com.lagradost.cloudstream3.MainPageRequest
+import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.SubtitleFile
+import com.lagradost.cloudstream3.TvType
+import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.mainPageOf
+import com.lagradost.cloudstream3.newHomePageResponse
+import com.lagradost.cloudstream3.newMovieLoadResponse
+import com.lagradost.cloudstream3.newMovieSearchResponse
+import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
 import org.jsoup.nodes.Element
 
 class TamilDhoolProvider : MainAPI() {
@@ -13,7 +26,7 @@ class TamilDhoolProvider : MainAPI() {
 
     override val mainPage = mainPageOf(
         "$mainUrl/sun-tv/" to "Sun TV",
-        "$mainUrl/vijay-tv/" to "Vijay TV",
+        "$mainUrl/vijay-tv/" to "Vijay TV", 
         "$mainUrl/zee-tamil/" to "Zee Tamil",
         "$mainUrl/kalaignar-tv/" to "Kalaignar TV"
     )
@@ -21,6 +34,7 @@ class TamilDhoolProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val doc = app.get(request.data + "page/$page/").document
         val episodes = doc.select("article.regular-post").mapNotNull { it.toSearchResult() }
+        
         return newHomePageResponse(
             list = listOf(HomePageList(request.name, episodes, true)),
             hasNext = doc.selectFirst(".navigation .next") != null
@@ -31,6 +45,7 @@ class TamilDhoolProvider : MainAPI() {
         val title = this.selectFirst("h3.entry-title a")?.text() ?: return null
         val href = this.selectFirst("h3.entry-title a")?.attr("href") ?: return null
         val posterUrl = this.selectFirst(".post-thumb img")?.attr("src")
+
         return newMovieSearchResponse(title, href, TvType.TvSeries) {
             this.posterUrl = posterUrl
         }
@@ -44,17 +59,21 @@ class TamilDhoolProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val doc = app.get(url).document
+        
         val title = doc.selectFirst("h1.entry-title")?.text() ?: return null
         val description = doc.select(".entry-content p").firstOrNull()?.text()
         val posterUrl = doc.selectFirst(".entry-cover")?.attr("style")?.let {
             Regex("background-image:url\\('(.*?)'\\)").find(it)?.groupValues?.get(1)
         } ?: doc.selectFirst("img")?.attr("src")
-
+        
         return newMovieLoadResponse(title, url, TvType.TvSeries, url) {
             this.plot = description
             this.posterUrl = posterUrl
         }
     }
+
+
+
 
     override suspend fun loadLinks(
         data: String,
@@ -63,10 +82,10 @@ class TamilDhoolProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         var foundLinks = false
-
+        
         try {
             val document = app.get(data).document
-
+            
             // Method 1: Look for TamilBliss links with video IDs
             val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
             tamilBlissLinks.forEach { link ->
@@ -80,7 +99,7 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
             // Method 2: Look for Dailymotion thumbnail images
             val dailymotionThumbnails = document.select("img[src*='dailymotion.com']")
             dailymotionThumbnails.forEach { img ->
@@ -94,7 +113,7 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
             // Method 3: Look for iframe embeds
             val iframes = document.select("iframe[src]")
             iframes.forEach { iframe ->
@@ -108,17 +127,17 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
             // Method 4: Search HTML content for video IDs
             val htmlContent = document.html()
             val videoIdPatterns = listOf(
                 Regex("video=([a-zA-Z0-9]+)"),
-                Regex("dai\.ly/([a-zA-Z0-9]+)"),
-                Regex("dailymotion\.com/embed/video/([a-zA-Z0-9]+)"),
-                Regex("dailymotion\.com/video/([a-zA-Z0-9]+)"),
+                Regex("dai\\.ly/([a-zA-Z0-9]+)"),
+                Regex("dailymotion\\.com/embed/video/([a-zA-Z0-9]+)"),
+                Regex("dailymotion\\.com/video/([a-zA-Z0-9]+)"),
                 Regex("thumbnail/video/([a-zA-Z0-9]+)")
             )
-
+            
             videoIdPatterns.forEach { pattern ->
                 val matches = pattern.findAll(htmlContent)
                 matches.forEach { match ->
@@ -129,7 +148,7 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
             // Method 5: Look for direct video links
             val videoElements = document.select("video source[src], a[href*='.mp4'], a[href*='.m3u8']")
             videoElements.forEach { element ->
@@ -139,12 +158,12 @@ class TamilDhoolProvider : MainAPI() {
                     foundLinks = true
                 }
             }
-
+            
             // Method 6: Look for prefetch or preload links
             val prefetchLinks = document.select("link[href*='dai.ly'], link[href*='dailymotion']")
             prefetchLinks.forEach { link ->
                 val href = link.attr("href")
-                val videoIdMatch = Regex("dai\.ly/([a-zA-Z0-9]+)").find(href)
+                val videoIdMatch = Regex("dai\\.ly/([a-zA-Z0-9]+)").find(href)
                 if (videoIdMatch != null) {
                     val videoId = videoIdMatch.groups[1]?.value
                     if (videoId != null) {
@@ -153,12 +172,12 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 }
             }
-
+            
         } catch (e: Exception) {
             // Log error but don't crash
             return false
         }
-
+        
         return foundLinks
     }
 }
