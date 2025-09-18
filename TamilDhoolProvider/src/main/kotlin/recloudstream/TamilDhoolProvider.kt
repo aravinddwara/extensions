@@ -65,41 +65,106 @@ class TamilDhoolProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val doc = app.get(data).document
+        var foundLinks = false
         
-        // Extract iframe sources
-        val iframes = doc.select("iframe[src]")
-        for (iframe in iframes) {
-            val src = iframe.attr("src")
-            when {
-                src.contains("thrfive.io") -> {
-                    loadExtractor(src, subtitleCallback, callback)
+        try {
+            val document = app.get(data).document
+            
+            // Method 1: Look for TamilBliss links with video IDs
+            val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
+            tamilBlissLinks.forEach { link ->
+                val href = link.attr("href")
+                val videoIdMatch = Regex("video=([a-zA-Z0-9]+)").find(href)
+                if (videoIdMatch != null) {
+                    val videoId = videoIdMatch.groups[1]?.value
+                    if (videoId != null) {
+                        loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
+                        foundLinks = true
+                    }
                 }
-                src.contains("dailymotion") || src.contains("dai.ly") -> {
-                    loadExtractor(src, subtitleCallback, callback)
+            }
+            
+            // Method 2: Look for Dailymotion thumbnail images
+            val dailymotionThumbnails = document.select("img[src*='dailymotion.com']")
+            dailymotionThumbnails.forEach { img ->
+                val src = img.attr("src")
+                val videoIdMatch = Regex("video/([a-zA-Z0-9]+)").find(src)
+                if (videoIdMatch != null) {
+                    val videoId = videoIdMatch.groups[1]?.value
+                    if (videoId != null) {
+                        loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
+                        foundLinks = true
+                    }
                 }
             }
+            
+            // Method 3: Look for iframe embeds
+            val iframes = document.select("iframe[src]")
+            iframes.forEach { iframe ->
+                val src = iframe.attr("src")
+                if (src.isNotEmpty()) {
+                    val fullUrl = if (src.startsWith("//")) "https:$src" else src
+                    if (fullUrl.contains("dailymotion") || fullUrl.contains("youtube") || 
+                        fullUrl.contains("vimeo") || fullUrl.contains("player")) {
+                        loadExtractor(fullUrl, subtitleCallback, callback)
+                        foundLinks = true
+                    }
+                }
+            }
+            
+            // Method 4: Search HTML content for video IDs
+            val htmlContent = document.html()
+            val videoIdPatterns = listOf(
+                Regex("video=([a-zA-Z0-9]+)"),
+                Regex("dai\\.ly/([a-zA-Z0-9]+)"),
+                Regex("dailymotion\\.com/embed/video/([a-zA-Z0-9]+)"),
+                Regex("dailymotion\\.com/video/([a-zA-Z0-9]+)"),
+                Regex("thumbnail/video/([a-zA-Z0-9]+)")
+            )
+            
+            videoIdPatterns.forEach { pattern ->
+                val matches = pattern.findAll(htmlContent)
+                matches.forEach { match ->
+                    val videoId = match.groups[1]?.value
+                    if (videoId != null && videoId.length >= 6) {
+                        loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
+                        foundLinks = true
+                    }
+                }
+            }
+            
+            // Method 5: Look for direct video links
+            val videoElements = document.select("video source[src], a[href*='.mp4'], a[href*='.m3u8']")
+            videoElements.forEach { element ->
+                val src = element.attr("src").ifEmpty { element.attr("href") }
+                if (src.isNotEmpty()) {
+                    loadExtractor(src, subtitleCallback, callback)
+                    foundLinks = true
+                }
+            }
+            
+            // Method 6: Look for prefetch or preload links
+            val prefetchLinks = document.select("link[href*='dai.ly'], link[href*='dailymotion']")
+            prefetchLinks.forEach { link ->
+                val href = link.attr("href")
+                val videoIdMatch = Regex("dai\\.ly/([a-zA-Z0-9]+)").find(href)
+                if (videoIdMatch != null) {
+                    val videoId = videoIdMatch.groups[1]?.value
+                    if (videoId != null) {
+                        loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
+                        foundLinks = true
+                    }
+                }
+            }
+            
+        } catch (e: Exception) {
+            // Log error but don't crash
+            return false
         }
         
-        // Extract Dailymotion links from custom player links
-        val dailymotionLinks = doc.select("a[href*='tamilbliss.com']")
-        for (link in dailymotionLinks) {
-            val href = link.attr("href")
-            val videoId = Regex("video=([a-zA-Z0-9]+)").find(href)?.groupValues?.get(1)
-            if (videoId != null) {
-                loadExtractor("https://www.dailymotion.com/video/$videoId", subtitleCallback, callback)
-            }
-        }
-        
-        // Look for direct video sources in the page content
-        val pageContent = doc.html()
-        val dailymotionMatches = Regex("k[a-zA-Z0-9]+").findAll(pageContent)
-        for (match in dailymotionMatches) {
-            val videoId = match.value
-            if (videoId.length > 10) { // Dailymotion IDs are typically longer
-                loadExtractor("https://www.dailymotion.com/video/$videoId", subtitleCallback, callback)
-            }
-        }
+        return foundLinks
+    }
+}
 
         return true
     }
