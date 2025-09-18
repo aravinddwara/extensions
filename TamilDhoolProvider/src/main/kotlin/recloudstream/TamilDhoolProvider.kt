@@ -25,10 +25,18 @@ class TamilDhoolProvider : MainAPI() {
     override val hasMainPage = true
 
     override val mainPage = mainPageOf(
-        "$mainUrl/sun-tv/" to "Sun TV",
-        "$mainUrl/vijay-tv/" to "Vijay TV", 
-        "$mainUrl/zee-tamil/" to "Zee Tamil",
-        "$mainUrl/kalaignar-tv/" to "Kalaignar TV"
+
+    // Vijay TV
+    "$mainUrl/vijay-tv/vijay-tv-serial/" to "Vijay TV Serials",
+    "$mainUrl/vijay-tv/vijay-tv-show/" to "Vijay TV Shows",
+    // Sun TV
+    "$mainUrl/sun-tv/sun-tv-serial/" to "Sun TV Serials",
+    "$mainUrl/sun-tv/sun-tv-show/" to "Sun TV Shows",
+    // Zee Tamil
+    "$mainUrl/zee-tamil/zee-tamil-serial/" to "Zee Tamil Serials",
+    "$mainUrl/zee-tamil/zee-tamil-show/" to "Zee Tamil Shows",
+    // Kalaignar TV
+    "$mainUrl/kalaignar-tv/" to "Kalaignar TV"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
