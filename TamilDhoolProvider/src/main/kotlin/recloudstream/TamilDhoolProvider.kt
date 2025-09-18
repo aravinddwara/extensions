@@ -43,12 +43,7 @@ class TamilDhoolProvider : MainAPI() {
 
     private fun Element.toSearchResult(): SearchResponse? {
         
-        val rawTitle = this.selectFirst("h3.entry-title a")?.text() ?: return null
-        val cleanedTitle = rawTitle
-        .replace(Regex("(?i)\\s*(Vijay\\s*Tv|Sun\\s*Tv|Zee\\s*Tamil|Kalaignar\\s*Tv)\\s*(Serial|Show)"), "")
-        .replace(Regex("(?i)\\s*\\|\\s*On\\s*(Vijay\\s*Tv|Sun\\s*Tv|Zee\\s*Tamil|Kalaignar\\s*Tv)"), "")
-        .trim()
-        
+        val title = this.selectFirst("h3.entry-title a")?.text() ?: return null       
         val href = this.selectFirst("h3.entry-title a")?.attr("href") ?: return null
         val posterUrl = this.selectFirst(".post-thumb img")?.attr("src")
 
@@ -66,7 +61,10 @@ class TamilDhoolProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val doc = app.get(url).document
         
-       val title = doc.selectFirst("h1.entry-title")?.text() ?: return null
+       val rawTitle = doc.selectFirst("h1.entry-title")?.text() ?: return null
+       val cleanedTitle = rawTitle
+       .replace(Regex("(?i)\\s*(Vijay\\s*Tv\\s*(Serial|Show)|Zee\\s*Tamil\\s*(Serial|Show)|Sun\\s*Tv\\s*(Serial|Show)|\\|\\s*On\\s*Kalaignar\\s*TV)\\s*"), "")
+       .trim()
        val description = doc.select("h2.wp-block-heading:has(span#Plot) + p").firstOrNull()?.text()
        val posterUrl = doc.selectFirst(".entry-cover")?.attr("style")?.let {
             Regex("background-image:url\\('(.*?)'\\)").find(it)?.groupValues?.get(1)
