@@ -39,6 +39,14 @@ class TamilDhoolProvider : MainAPI() {
     "$mainUrl/kalaignar-tv/" to "Kalaignar TV"
     )
 
+    private fun cleanTitle(title: String): String {
+        return title
+            .replace(Regex("(?i)\\s*(Vijay\\s*Tv\\s*(Serial|Show)|Zee\\s*Tamil\\s*(Serial|Show)|Sun\\s*Tv\\s*(Serial|Show)|Kalaignar\\s*Tv\\s*(Serial|Show)?|\\|\\s*On\\s*Kalaignar\\s*TV)\\s*"), "")
+            .replace(Regex("(?i)\\s*-\\s*(Vijay|Zee|Sun|Kalaignar)\\s*(TV|Tamil)\\s*"), "")
+            .replace(Regex("(?i)\\s*\\|\\s*(Tamil|Serial|Show)\\s*"), "")
+            .trim()
+    }
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val doc = app.get(request.data + "page/$page/").document
         val episodes = doc.select("article.regular-post").mapNotNull { it.toSearchResult() }
@@ -51,7 +59,8 @@ class TamilDhoolProvider : MainAPI() {
 
     private fun Element.toSearchResult(): SearchResponse? {
         
-        val title = this.selectFirst("h3.entry-title a")?.text() ?: return null       
+        val rawTitle = this.selectFirst("h3.entry-title a")?.text() ?: return null
+        val title = cleanTitle(rawTitle)
         val href = this.selectFirst("h3.entry-title a")?.attr("href") ?: return null
         val posterUrl = this.selectFirst(".post-thumb img")?.attr("src")
 
@@ -69,11 +78,10 @@ class TamilDhoolProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val doc = app.get(url).document
         
-       val title = doc.selectFirst("h1.entry-title")?.text()
-        ?.replace(Regex("(?i)\\s*(Vijay\\s*Tv\\s*(Serial|Show)|Zee\\s*Tamil\\s*(Serial|Show)|Sun\\s*Tv\\s*(Serial|Show)|\\|\\s*On\\s*Kalaignar\\s*TV)\\s*"), "")
-        ?.trim() ?: return null
-       val description = doc.select("h2.wp-block-heading:has(span#Plot) + p").firstOrNull()?.text()
-       val posterUrl = doc.selectFirst(".entry-cover")?.attr("style")?.let {
+        val rawTitle = doc.selectFirst("h1.entry-title")?.text() ?: return null
+        val title = cleanTitle(rawTitle)
+        val description = doc.select("h2.wp-block-heading:has(span#Plot) + p").firstOrNull()?.text()
+        val posterUrl = doc.selectFirst(".entry-cover")?.attr("style")?.let {
             Regex("background-image:url\\('(.*?)'\\)").find(it)?.groupValues?.get(1)
         } ?: doc.selectFirst("img")?.attr("src")
         
