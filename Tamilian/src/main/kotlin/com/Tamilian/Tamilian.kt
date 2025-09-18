@@ -21,7 +21,7 @@ class Tamilian : TmdbProvider() {
 
     companion object {
         const val HOST = "https://embedojo.net"
-        const val TMDB_API_KEY = "your_tmdb_api_key_here" // You'll need to get this from TMDB
+        const val TMDB_API_KEY = "a7a980562c931a2722d2b91253819cbe" // You'll need to get this from TMDB
         const val TMDB_BASE_URL = "https://api.themoviedb.org/3"
     }
 
