@@ -119,8 +119,11 @@ class ThiraiOneProvider : MainAPI() {
                     val urlMatch = Regex("url=(.+)").find(metaRefresh)
                     if (urlMatch != null) {
                         currentReferer = currentUrl
-                        currentUrl = urlMatch.groups[1]?.value ?: return null
-                        continue
+                        val newUrl = urlMatch.groups[1]?.value
+                        if (newUrl != null) {
+                            currentUrl = newUrl
+                            continue
+                        }
                     }
                 }
                 
@@ -139,8 +142,11 @@ class ThiraiOneProvider : MainAPI() {
                     val locationMatch = Regex("window\\.location\\s*=\\s*['\"]([^'\"]+)['\"]").find(content)
                     if (locationMatch != null) {
                         currentReferer = currentUrl
-                        currentUrl = locationMatch.groups[1]?.value ?: return null
-                        continue
+                        val newUrl = locationMatch.groups[1]?.value
+                        if (newUrl != null) {
+                            currentUrl = newUrl
+                            continue
+                        }
                     }
                 }
                 
