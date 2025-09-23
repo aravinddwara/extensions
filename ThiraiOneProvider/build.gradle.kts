@@ -6,7 +6,7 @@ cloudstream {
     
     status = 1
     tvTypes = listOf("TvSeries", "Movie")
-    iconUrl = "https://www.google.com/s2favicons?domain=tamildhool.tech&sz=%size%"
+    iconUrl = "https://www.google.com/s2/favicons?domain=tamildhool.tech&sz=%size%"
     
     isCrossPlatform = true
 }
