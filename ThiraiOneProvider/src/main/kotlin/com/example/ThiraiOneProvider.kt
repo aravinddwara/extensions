@@ -52,7 +52,7 @@ class ThiraiOneProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val searchUrl = "$mainUrl/?s=${query.replace(" ", "+")}"
+        val searchUrl = "$mainUrl/?s=${query.replace(" ", "+") }"
         val doc = app.get(searchUrl).document
         return doc.select("article.regular-post").mapNotNull { it.toSearchResult() }
     }
@@ -100,7 +100,12 @@ class ThiraiOneProvider : MainAPI() {
                         location
                     } else {
                         val baseUrl = URL(currentUrl)
-                        "${baseUrl.protocol}://${baseUrl.host}$location"
+                        // Ensure leading slash
+                        if (location.startsWith("/")) {
+                            "${baseUrl.protocol}://${baseUrl.host}$location"
+                        } else {
+                            "${baseUrl.protocol}://${baseUrl.host}/$location"
+                        }
                     }
                     continue
                 }
@@ -116,7 +121,7 @@ class ThiraiOneProvider : MainAPI() {
                 // Look for meta refresh
                 val metaRefresh = doc.selectFirst("meta[http-equiv=refresh]")?.attr("content")
                 if (metaRefresh != null) {
-                    val urlMatch = Regex("url=(.+)").find(metaRefresh)
+                    val urlMatch = Regex("url=(.+)", RegexOption.IGNORE_CASE).find(metaRefresh)
                     if (urlMatch != null) {
                         currentReferer = currentUrl
                         val newUrl = urlMatch.groups[1]?.value
@@ -197,7 +202,7 @@ class ThiraiOneProvider : MainAPI() {
                         val videoUrl = match.groups[1]?.value
                         if (videoUrl != null && (videoUrl.contains(".m3u8") || videoUrl.contains(".mp4"))) {
                             links.add(
-                                ExtractorLink(
+                                newExtractorLink(
                                     source = "ThiraiOne",
                                     name = "ThiraiOne - ${getQualityFromUrl(videoUrl)}p",
                                     url = videoUrl,
@@ -222,7 +227,7 @@ class ThiraiOneProvider : MainAPI() {
                         val videoUrl = match.groups[1]?.value
                         if (videoUrl != null && (videoUrl.contains(".m3u8") || videoUrl.contains(".mp4"))) {
                             links.add(
-                                ExtractorLink(
+                                newExtractorLink(
                                     source = "ThiraiOne",
                                     name = "ThiraiOne - ${getQualityFromUrl(videoUrl)}p",
                                     url = videoUrl,
@@ -236,14 +241,14 @@ class ThiraiOneProvider : MainAPI() {
                 }
                 
                 // Method 3: Look for direct video URLs in any variable
-                val urlRegex = Regex("https://[^'\"\\s]+\\.(?:m3u8|mp4)[^'\"\\s]*")
+                val urlRegex = Regex("https://[^'\\"\\s]+\\.(?:m3u8|mp4)[^'\\"\\s]*")
                 val urlMatches = urlRegex.findAll(content)
                 
                 urlMatches.forEach { match ->
                     val videoUrl = match.value
                     if (!links.any { it.url == videoUrl }) {
                         links.add(
-                            ExtractorLink(
+                            newExtractorLink(
                                 source = "ThiraiOne",
                                 name = "ThiraiOne - ${getQualityFromUrl(videoUrl)}p",
                                 url = videoUrl,
@@ -283,7 +288,7 @@ class ThiraiOneProvider : MainAPI() {
                                 val videoUrl = match.groups[1]?.value
                                 if (videoUrl != null) {
                                     links.add(
-                                        ExtractorLink(
+                                        newExtractorLink(
                                             source = "ThiraiOne API",
                                             name = "ThiraiOne API - ${getQualityFromUrl(videoUrl)}p",
                                             url = videoUrl,
