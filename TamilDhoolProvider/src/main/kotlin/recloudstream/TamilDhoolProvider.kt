@@ -104,6 +104,21 @@ class TamilDhoolProvider : MainAPI() {
         
         try {
             val document = app.get(data).document
+
+
+            // NEW: Method 0 - Thirai One extractor (highest priority)
+            val thiraiOneLinks = document.select("a[href*='tamilbliss.com'], img[alt*='Thirai One'], img[alt*='THIRAI ONE']")
+            for (element in thiraiOneLinks) {
+            val href = element.attr("href").ifEmpty { 
+            element.parent()?.attr("href") ?: ""
+            }
+            if (href.contains("tamilbliss.com") && href.contains("video=")) {
+            val thiraiExtractor = ThiraiOneExtractor()
+            thiraiExtractor.getUrl(href, data, subtitleCallback, callback)
+            foundLinks = true
+            }
+        }
+
             
             // Method 1: Look for TamilBliss links with video IDs
             val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
