@@ -15,7 +15,7 @@ class ThiraiOneExtractor : ExtractorApi() {
         referer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
-    ): Boolean {
+    ) {
         try {
             // Step 1: Get the tamilbliss redirect link with original referer
             val tamilblissResponse = app.get(
@@ -26,7 +26,7 @@ class ThiraiOneExtractor : ExtractorApi() {
             
             val redirectLocation = tamilblissResponse.headers["location"] 
                 ?: tamilblissResponse.headers["Location"]
-                ?: return false
+                ?: return
             
             // Step 2: Follow redirect to thiraisorgam with tamilbliss referer
             val thiraiResponse = app.get(
@@ -36,7 +36,7 @@ class ThiraiOneExtractor : ExtractorApi() {
             )
             
             val thiraiDoc = thiraiResponse.document
-            val embedUrl = extractEmbedUrl(thiraiDoc) ?: return false
+            val embedUrl = extractEmbedUrl(thiraiDoc) ?: return
             
             // Step 3: Get the embed page with thiraisorgam referer
             val embedResponse = app.get(
@@ -51,11 +51,9 @@ class ThiraiOneExtractor : ExtractorApi() {
             
             // Step 4: Extract video sources from embed page
             extractVideoSources(embedDoc, embedResponse.url, callback)
-            return true
             
         } catch (e: Exception) {
             // Silent fail - let other extractors try
-            return false
         }
     }
     
@@ -223,12 +221,12 @@ class ThiraiOneExtractor : ExtractorApi() {
             val src = videoElement.attr("src")
             if (src.isNotEmpty()) {
                 callback.invoke(
-                    newExtractorLink(
-                        name,
-                        name,
-                        src,
-                        referer,
-                        Qualities.Unknown.value,
+                    ExtractorLink(
+                        source = name,
+                        name = name,
+                        url = src,
+                        referer = referer,
+                        quality = Qualities.Unknown.value,
                         isM3u8 = src.contains(".m3u8")
                     )
                 )
@@ -236,7 +234,7 @@ class ThiraiOneExtractor : ExtractorApi() {
         }
     }
     
-    private fun extractFromJwPlayerSetup(setupContent: String, referer: String, callback: (ExtractorLink) -> Unit) {
+    private suspend fun extractFromJwPlayerSetup(setupContent: String, referer: String, callback: (ExtractorLink) -> Unit) {
         try {
             // Extract file URLs from JW Player setup
             val fileMatch = Regex("file\\s*:\\s*[\"']([^\"']+)[\"']").find(setupContent)
@@ -247,12 +245,12 @@ class ThiraiOneExtractor : ExtractorApi() {
                     return
                 }
                 callback.invoke(
-                    newExtractorLink(
-                        name,
-                        name,
-                        fileUrl,
-                        referer,
-                        Qualities.Unknown.value,
+                    ExtractorLink(
+                        source = name,
+                        name = name,
+                        url = fileUrl,
+                        referer = referer,
+                        quality = Qualities.Unknown.value,
                         isM3u8 = fileUrl.contains(".m3u8")
                     )
                 )
@@ -272,7 +270,7 @@ class ThiraiOneExtractor : ExtractorApi() {
         }
     }
     
-    private fun extractFromJwPlayerConfig(configContent: String, referer: String, callback: (ExtractorLink) -> Unit) {
+    private suspend fun extractFromJwPlayerConfig(configContent: String, referer: String, callback: (ExtractorLink) -> Unit) {
         try {
             val sourcesMatch = Regex("sources\\s*:\\s*\\[([^\\]]+)\\]").find(configContent)
             if (sourcesMatch != null) {
@@ -283,7 +281,7 @@ class ThiraiOneExtractor : ExtractorApi() {
         }
     }
     
-    private fun extractFromSourcesArray(sourcesContent: String, referer: String, callback: (ExtractorLink) -> Unit) {
+    private suspend fun extractFromSourcesArray(sourcesContent: String, referer: String, callback: (ExtractorLink) -> Unit) {
         try {
             // Extract all file URLs from sources array
             val fileMatches = Regex("file\\s*:\\s*[\"']([^\"']+)[\"']").findAll(sourcesContent)
@@ -294,12 +292,12 @@ class ThiraiOneExtractor : ExtractorApi() {
                         parseM3u8Playlist(fileUrl, referer, callback)
                     } else {
                         callback.invoke(
-                            newExtractorLink(
-                                name,
-                                name,
-                                fileUrl,
-                                referer,
-                                Qualities.Unknown.value,
+                            ExtractorLink(
+                                source = name,
+                                name = name,
+                                url = fileUrl,
+                                referer = referer,
+                                quality = Qualities.Unknown.value,
                                 isM3u8 = false
                             )
                         )
@@ -340,12 +338,12 @@ class ThiraiOneExtractor : ExtractorApi() {
                         parseM3u8Playlist(videoUrl, referer, callback)
                     } else {
                         callback.invoke(
-                            newExtractorLink(
-                                name,
-                                name,
-                                videoUrl,
-                                referer,
-                                Qualities.Unknown.value,
+                            ExtractorLink(
+                                source = name,
+                                name = name,
+                                url = videoUrl,
+                                referer = referer,
+                                quality = Qualities.Unknown.value,
                                 isM3u8 = false
                             )
                         )
@@ -409,12 +407,12 @@ class ThiraiOneExtractor : ExtractorApi() {
                     }
                     
                     callback.invoke(
-                        newExtractorLink(
-                            name,
-                            name,
-                            variantUrl,
-                            referer,
-                            currentQuality,
+                        ExtractorLink(
+                            source = name,
+                            name = name,
+                            url = variantUrl,
+                            referer = referer,
+                            quality = currentQuality,
                             isM3u8 = true
                         )
                     )
@@ -424,12 +422,12 @@ class ThiraiOneExtractor : ExtractorApi() {
             // If no variants found, use master playlist directly
             if (!playlistContent.contains("#EXT-X-STREAM-INF:")) {
                 callback.invoke(
-                    newExtractorLink(
-                        name,
-                        name,
-                        masterUrl,
-                        referer,
-                        Qualities.Unknown.value,
+                    ExtractorLink(
+                        source = name,
+                        name = name,
+                        url = masterUrl,
+                        referer = referer,
+                        quality = Qualities.Unknown.value,
                         isM3u8 = true
                     )
                 )
@@ -438,12 +436,12 @@ class ThiraiOneExtractor : ExtractorApi() {
         } catch (e: Exception) {
             // Fallback: return the URL as-is
             callback.invoke(
-                newExtractorLink(
-                    name,
-                    name,
-                    masterUrl,
-                    referer,
-                    Qualities.Unknown.value,
+                ExtractorLink(
+                    source = name,
+                    name = name,
+                    url = masterUrl,
+                    referer = referer,
+                    quality = Qualities.Unknown.value,
                     isM3u8 = true
                 )
             )
