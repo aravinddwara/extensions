@@ -25,18 +25,17 @@ class TamilDhoolProvider : MainAPI() {
     override val hasMainPage = true
 
     override val mainPage = mainPageOf(
-
-    // Vijay TV
-    "$mainUrl/vijay-tv/vijay-tv-serial/" to "Vijay TV Serials",
-    "$mainUrl/vijay-tv/vijay-tv-show/" to "Vijay TV Shows",
-    // Sun TV
-    "$mainUrl/sun-tv/sun-tv-serial/" to "Sun TV Serials",
-    "$mainUrl/sun-tv/sun-tv-show/" to "Sun TV Shows",
-    // Zee Tamil
-    "$mainUrl/zee-tamil/zee-tamil-serial/" to "Zee Tamil Serials",
-    "$mainUrl/zee-tamil/zee-tamil-show/" to "Zee Tamil Shows",
-    // Kalaignar TV
-    "$mainUrl/kalaignar-tv/" to "Kalaignar TV"
+        // Vijay TV
+        "$mainUrl/vijay-tv/vijay-tv-serial/" to "Vijay TV Serials",
+        "$mainUrl/vijay-tv/vijay-tv-show/" to "Vijay TV Shows",
+        // Sun TV
+        "$mainUrl/sun-tv/sun-tv-serial/" to "Sun TV Serials",
+        "$mainUrl/sun-tv/sun-tv-show/" to "Sun TV Shows",
+        // Zee Tamil
+        "$mainUrl/zee-tamil/zee-tamil-serial/" to "Zee Tamil Serials",
+        "$mainUrl/zee-tamil/zee-tamil-show/" to "Zee Tamil Shows",
+        // Kalaignar TV
+        "$mainUrl/kalaignar-tv/" to "Kalaignar TV"
     )
 
     private fun cleanTitle(title: String): String {
@@ -58,7 +57,6 @@ class TamilDhoolProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
-        
         val rawTitle = this.selectFirst("h3.entry-title a")?.text() ?: return null
         val title = cleanTitle(rawTitle)
         val href = this.selectFirst("h3.entry-title a")?.attr("href") ?: return null
@@ -91,9 +89,6 @@ class TamilDhoolProvider : MainAPI() {
         }
     }
 
-
-
-
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -105,36 +100,71 @@ class TamilDhoolProvider : MainAPI() {
         try {
             val document = app.get(data).document
 
+            // Method 0: MediaDelivery extractor for Thirai Two (highest priority)
+            val thiraiTwoLinks = document.select("a[href*='tamilbliss.com'], img[alt*='Thirai Two'], img[alt*='THIRAI TWO']")
+            for (element in thiraiTwoLinks) {
+                val href = element.attr("href").ifEmpty { 
+                    element.parent()?.attr("href") ?: ""
+                }
+                
+                // Check if this is a Thirai Two link (mediadelivery.net flow)
+                if (href.contains("tamilbliss.com") && href.contains("video=")) {
+                    val altText = element.attr("alt").uppercase()
+                    val parentText = element.parent()?.text()?.uppercase() ?: ""
+                    
+                    // Only use MediaDeliveryExtractor for "Thirai Two" links
+                    if (altText.contains("THIRAI TWO") || parentText.contains("THIRAI TWO")) {
+                        val mediaDeliveryExtractor = MediaDeliveryExtractor()
+                        mediaDeliveryExtractor.getUrl(href, data, subtitleCallback, callback)
+                        foundLinks = true
+                    }
+                }
+            }
 
-            // NEW: Method 0 - Thirai One extractor (highest priority)
+            // Method 1: ThiraiOne extractor for Thirai One links
             val thiraiOneLinks = document.select("a[href*='tamilbliss.com'], img[alt*='Thirai One'], img[alt*='THIRAI ONE']")
             for (element in thiraiOneLinks) {
-            val href = element.attr("href").ifEmpty { 
-            element.parent()?.attr("href") ?: ""
-            }
-            if (href.contains("tamilbliss.com") && href.contains("video=")) {
-            val thiraiExtractor = ThiraiOneExtractor()
-            thiraiExtractor.getUrl(href, data, subtitleCallback, callback)
-            foundLinks = true
-            }
-        }
-
-            
-            // Method 1: Look for TamilBliss links with video IDs
-            val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
-            tamilBlissLinks.forEach { link ->
-                val href = link.attr("href")
-                val videoIdMatch = Regex("video=([a-zA-Z0-9]+)").find(href)
-                if (videoIdMatch != null) {
-                    val videoId = videoIdMatch.groups[1]?.value
-                    if (videoId != null) {
-                        loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
+                val href = element.attr("href").ifEmpty { 
+                    element.parent()?.attr("href") ?: ""
+                }
+                
+                if (href.contains("tamilbliss.com") && href.contains("video=")) {
+                    val altText = element.attr("alt").uppercase()
+                    val parentText = element.parent()?.text()?.uppercase() ?: ""
+                    
+                    // Only use ThiraiOneExtractor for "Thirai One" links
+                    if (altText.contains("THIRAI ONE") || parentText.contains("THIRAI ONE")) {
+                        val thiraiExtractor = ThiraiOneExtractor()
+                        thiraiExtractor.getUrl(href, data, subtitleCallback, callback)
                         foundLinks = true
                     }
                 }
             }
             
-            // Method 2: Look for Dailymotion thumbnail images
+            // Method 2: Look for TamilBliss links with video IDs (fallback for unspecified links)
+            val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
+            tamilBlissLinks.forEach { link ->
+                val href = link.attr("href")
+                val videoIdMatch = Regex("video=([a-zA-Z0-9-]+)").find(href)
+                if (videoIdMatch != null) {
+                    val videoId = videoIdMatch.groups[1]?.value
+                    if (videoId != null) {
+                        // Check if it's a UUID format (likely MediaDelivery)
+                        if (videoId.contains("-") && videoId.length > 20) {
+                            // Try MediaDelivery first for UUID-like video IDs
+                            val mediaDeliveryExtractor = MediaDeliveryExtractor()
+                            mediaDeliveryExtractor.getUrl(href, data, subtitleCallback, callback)
+                            foundLinks = true
+                        } else {
+                            // Try as Dailymotion for shorter IDs
+                            loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
+                            foundLinks = true
+                        }
+                    }
+                }
+            }
+            
+            // Method 3: Look for Dailymotion thumbnail images
             val dailymotionThumbnails = document.select("img[src*='dailymotion.com']")
             dailymotionThumbnails.forEach { img ->
                 val src = img.attr("src")
@@ -148,24 +178,25 @@ class TamilDhoolProvider : MainAPI() {
                 }
             }
             
-            // Method 3: Look for iframe embeds
+            // Method 4: Look for iframe embeds
             val iframes = document.select("iframe[src]")
             iframes.forEach { iframe ->
                 val src = iframe.attr("src")
                 if (src.isNotEmpty()) {
                     val fullUrl = if (src.startsWith("//")) "https:$src" else src
                     if (fullUrl.contains("dailymotion") || fullUrl.contains("youtube") || 
-                        fullUrl.contains("vimeo") || fullUrl.contains("player")) {
+                        fullUrl.contains("vimeo") || fullUrl.contains("player") ||
+                        fullUrl.contains("mediadelivery")) {
                         loadExtractor(fullUrl, subtitleCallback, callback)
                         foundLinks = true
                     }
                 }
             }
             
-            // Method 4: Search HTML content for video IDs
+            // Method 5: Search HTML content for video IDs
             val htmlContent = document.html()
             val videoIdPatterns = listOf(
-                Regex("video=([a-zA-Z0-9]+)"),
+                Regex("video=([a-zA-Z0-9-]+)"),
                 Regex("dai\\.ly/([a-zA-Z0-9]+)"),
                 Regex("dailymotion\\.com/embed/video/([a-zA-Z0-9]+)"),
                 Regex("dailymotion\\.com/video/([a-zA-Z0-9]+)"),
@@ -177,13 +208,19 @@ class TamilDhoolProvider : MainAPI() {
                 matches.forEach { match ->
                     val videoId = match.groups[1]?.value
                     if (videoId != null && videoId.length >= 6) {
-                        loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
-                        foundLinks = true
+                        if (videoId.contains("-") && videoId.length > 20) {
+                            // UUID-like, might be MediaDelivery
+                            // Already handled above
+                        } else {
+                            // Regular Dailymotion ID
+                            loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
+                            foundLinks = true
+                        }
                     }
                 }
             }
             
-            // Method 5: Look for direct video links
+            // Method 6: Look for direct video links
             val videoElements = document.select("video source[src], a[href*='.mp4'], a[href*='.m3u8']")
             videoElements.forEach { element ->
                 val src = element.attr("src").ifEmpty { element.attr("href") }
@@ -193,7 +230,7 @@ class TamilDhoolProvider : MainAPI() {
                 }
             }
             
-            // Method 6: Look for prefetch or preload links
+            // Method 7: Look for prefetch or preload links
             val prefetchLinks = document.select("link[href*='dai.ly'], link[href*='dailymotion']")
             prefetchLinks.forEach { link ->
                 val href = link.attr("href")
