@@ -100,6 +100,19 @@ class TamilDhoolProvider : MainAPI() {
         try {
             val document = app.get(data).document
 
+            // Method 0: Direct thrfive.io iframe detection (highest priority)
+        val thrfiveIframes = document.select("iframe[src*='thrfive.io/embed/']")
+        for (iframe in thrfiveIframes) {
+            val embedUrl = iframe.attr("src")
+            if (embedUrl.isNotEmpty()) {
+                val thiraiExtractor = ThiraiOneExtractor()
+                thiraiExtractor.getUrl(embedUrl, data, subtitleCallback, callback)
+                foundLinks = true
+            }
+        }
+
+            
+
             // Method 0: MediaDelivery extractor for Thirai Two (highest priority)
             val thiraiTwoLinks = document.select("a[href*='tamilbliss.com'], img[alt*='Thirai Two'], img[alt*='THIRAI TWO']")
             for (element in thiraiTwoLinks) {
