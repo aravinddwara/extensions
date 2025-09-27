@@ -101,19 +101,15 @@ class TamilDhoolProvider : MainAPI() {
             val document = app.get(data).document
 
             // Method 0: Direct thrfive.io iframe detection (highest priority)
-        val thrfiveIframes = document.select("iframe[src*='thrfive.io/embed/']")
-        for (iframe in thrfiveIframes) {
-            val embedUrl = iframe.attr("src")
-            if (embedUrl.isNotEmpty()) {
-                val thiraiExtractor = ThiraiOneExtractor()
-                thiraiExtractor.getUrl(embedUrl, data, subtitleCallback, callback)
-                foundLinks = true
+            val thrfiveIframes = document.select("iframe[src*='thrfive.io/embed/']")
+            for (iframe in thrfiveIframes) {
+                val embedUrl = iframe.attr("src")
+                if (embedUrl.isNotEmpty()) {
+                    val thiraiExtractor = ThiraiOneExtractor()
+                    thiraiExtractor.getUrl(embedUrl, data, subtitleCallback, callback)
+                    foundLinks = true
+                }
             }
-        }
-
-            
-
-            
 
             // Method 1: ThiraiOne extractor for Thirai One links
             val thiraiOneLinks = document.select("a[href*='tamilbliss.com'], img[alt*='Thirai One'], img[alt*='THIRAI ONE']")
@@ -135,6 +131,28 @@ class TamilDhoolProvider : MainAPI() {
                 }
             }
             
+            // Method 2: Look for TamilBliss links with video IDs (fallback for unspecified links)
+            val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
+            tamilBlissLinks.forEach { link ->
+                val href = link.attr("href")
+                val videoIdMatch = Regex("video=([a-zA-Z0-9-]+)").find(href)
+                if (videoIdMatch != null) {
+                    val videoId = videoIdMatch.groups[1]?.value
+                    if (videoId != null) {
+                        // Check if it's a UUID format (likely for other extractors)
+                        if (videoId.contains("-") && videoId.length > 20) {
+                            // Try ThiraiOneExtractor for UUID-like video IDs as fallback
+                            val thiraiExtractor = ThiraiOneExtractor()
+                            thiraiExtractor.getUrl(href, data, subtitleCallback, callback)
+                            foundLinks = true
+                        } else {
+                            // Try as Dailymotion for shorter IDs
+                            loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
+                            foundLinks = true
+                        }
+                    }
+                }
+            }
             
             // Method 3: Look for Dailymotion thumbnail images
             val dailymotionThumbnails = document.select("img[src*='dailymotion.com']")
@@ -150,20 +168,20 @@ class TamilDhoolProvider : MainAPI() {
                 }
             }
             
+            // Method 4: Look for iframe embeds
+            val iframes = document.select("iframe[src]")
+            iframes.forEach { iframe ->
+                val src = iframe.attr("src")
+                if (src.isNotEmpty()) {
                     val fullUrl = if (src.startsWith("//")) "https:$src" else src
                     if (fullUrl.contains("dailymotion") || fullUrl.contains("youtube") || 
-                        fullUrl.contains("vimeo") || fullUrl.contains("player") ||
+                        fullUrl.contains("vimeo") || fullUrl.contains("player")) {
                         loadExtractor(fullUrl, subtitleCallback, callback)
                         foundLinks = true
                     }
                 }
             }
-             // Method 4: Look for iframe embeds
-            val iframes = document.select("iframe[src]")
-            iframes.forEach { iframe ->
-                val src = iframe.attr("src")
-                if (src.isNotEmpty()) {
-           
+            
             // Method 5: Search HTML content for video IDs
             val htmlContent = document.html()
             val videoIdPatterns = listOf(
@@ -180,8 +198,7 @@ class TamilDhoolProvider : MainAPI() {
                     val videoId = match.groups[1]?.value
                     if (videoId != null && videoId.length >= 6) {
                         if (videoId.contains("-") && videoId.length > 20) {
-                            // UUID-like, might be MediaDelivery
-                            // Already handled above
+                            // UUID-like, might be for other extractors - skip for now
                         } else {
                             // Regular Dailymotion ID
                             loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
