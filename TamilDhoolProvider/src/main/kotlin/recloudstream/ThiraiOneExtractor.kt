@@ -6,6 +6,7 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.M3u8Helper
+import com.lagradost.cloudstream3.newExtractorLink
 import org.jsoup.nodes.Document
 
 class ThiraiOneExtractor : ExtractorApi() {
@@ -223,7 +224,7 @@ class ThiraiOneExtractor : ExtractorApi() {
                     parseM3u8Playlist(src, referer, callback)
                 } else {
                     callback.invoke(
-                        ExtractorLink(
+                        newExtractorLink(
                             name,
                             name,
                             src,
@@ -291,7 +292,7 @@ class ThiraiOneExtractor : ExtractorApi() {
                     return
                 }
                 callback.invoke(
-                    ExtractorLink(
+                    newExtractorLink(
                         name,
                         name,
                         fileUrl,
@@ -326,7 +327,7 @@ class ThiraiOneExtractor : ExtractorApi() {
                         parseM3u8Playlist(fileUrl, referer, callback)
                     } else {
                         callback.invoke(
-                            ExtractorLink(
+                            newExtractorLink(
                                 name,
                                 name,
                                 fileUrl,
@@ -373,7 +374,7 @@ class ThiraiOneExtractor : ExtractorApi() {
                         parseM3u8Playlist(videoUrl, referer, callback)
                     } else {
                         callback.invoke(
-                            ExtractorLink(
+                            newExtractorLink(
                                 name,
                                 name,
                                 videoUrl,
@@ -469,7 +470,7 @@ class ThiraiOneExtractor : ExtractorApi() {
                     }
                     
                     callback.invoke(
-                        ExtractorLink(
+                        newExtractorLink(
                             qualityName,
                             qualityName,
                             variantUrl,
@@ -488,7 +489,7 @@ class ThiraiOneExtractor : ExtractorApi() {
             // If no variants found, use master playlist directly
             if (!playlistContent.contains("#EXT-X-STREAM-INF:")) {
                 callback.invoke(
-                    ExtractorLink(
+                    newExtractorLink(
                         name,
                         name,
                         masterUrl,
@@ -502,7 +503,7 @@ class ThiraiOneExtractor : ExtractorApi() {
         } catch (e: Exception) {
             // Fallback: return the URL as-is
             callback.invoke(
-                ExtractorLink(
+                newExtractorLink(
                     name,
                     name,
                     masterUrl,
