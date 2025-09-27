@@ -113,26 +113,7 @@ class TamilDhoolProvider : MainAPI() {
 
             
 
-            // Method 0: MediaDelivery extractor for Thirai Two (highest priority)
-            val thiraiTwoLinks = document.select("a[href*='tamilbliss.com'], img[alt*='Thirai Two'], img[alt*='THIRAI TWO']")
-            for (element in thiraiTwoLinks) {
-                val href = element.attr("href").ifEmpty { 
-                    element.parent()?.attr("href") ?: ""
-                }
-                
-                // Check if this is a Thirai Two link (mediadelivery.net flow)
-                if (href.contains("tamilbliss.com") && href.contains("video=")) {
-                    val altText = element.attr("alt").uppercase()
-                    val parentText = element.parent()?.text()?.uppercase() ?: ""
-                    
-                    // Only use MediaDeliveryExtractor for "Thirai Two" links
-                    if (altText.contains("THIRAI TWO") || parentText.contains("THIRAI TWO")) {
-                        val mediaDeliveryExtractor = MediaDeliveryExtractor()
-                        mediaDeliveryExtractor.getUrl(href, data, subtitleCallback, callback)
-                        foundLinks = true
-                    }
-                }
-            }
+            
 
             // Method 1: ThiraiOne extractor for Thirai One links
             val thiraiOneLinks = document.select("a[href*='tamilbliss.com'], img[alt*='Thirai One'], img[alt*='THIRAI ONE']")
@@ -154,28 +135,6 @@ class TamilDhoolProvider : MainAPI() {
                 }
             }
             
-            // Method 2: Look for TamilBliss links with video IDs (fallback for unspecified links)
-            val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
-            tamilBlissLinks.forEach { link ->
-                val href = link.attr("href")
-                val videoIdMatch = Regex("video=([a-zA-Z0-9-]+)").find(href)
-                if (videoIdMatch != null) {
-                    val videoId = videoIdMatch.groups[1]?.value
-                    if (videoId != null) {
-                        // Check if it's a UUID format (likely MediaDelivery)
-                        if (videoId.contains("-") && videoId.length > 20) {
-                            // Try MediaDelivery first for UUID-like video IDs
-                            val mediaDeliveryExtractor = MediaDeliveryExtractor()
-                            mediaDeliveryExtractor.getUrl(href, data, subtitleCallback, callback)
-                            foundLinks = true
-                        } else {
-                            // Try as Dailymotion for shorter IDs
-                            loadExtractor("https://www.dailymotion.com/embed/video/$videoId", subtitleCallback, callback)
-                            foundLinks = true
-                        }
-                    }
-                }
-            }
             
             // Method 3: Look for Dailymotion thumbnail images
             val dailymotionThumbnails = document.select("img[src*='dailymotion.com']")
@@ -191,21 +150,20 @@ class TamilDhoolProvider : MainAPI() {
                 }
             }
             
-            // Method 4: Look for iframe embeds
-            val iframes = document.select("iframe[src]")
-            iframes.forEach { iframe ->
-                val src = iframe.attr("src")
-                if (src.isNotEmpty()) {
                     val fullUrl = if (src.startsWith("//")) "https:$src" else src
                     if (fullUrl.contains("dailymotion") || fullUrl.contains("youtube") || 
                         fullUrl.contains("vimeo") || fullUrl.contains("player") ||
-                        fullUrl.contains("mediadelivery")) {
                         loadExtractor(fullUrl, subtitleCallback, callback)
                         foundLinks = true
                     }
                 }
             }
-            
+             // Method 4: Look for iframe embeds
+            val iframes = document.select("iframe[src]")
+            iframes.forEach { iframe ->
+                val src = iframe.attr("src")
+                if (src.isNotEmpty()) {
+           
             // Method 5: Search HTML content for video IDs
             val htmlContent = document.html()
             val videoIdPatterns = listOf(
