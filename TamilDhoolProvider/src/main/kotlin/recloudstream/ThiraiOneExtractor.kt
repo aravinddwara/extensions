@@ -5,6 +5,7 @@ import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
+import com.lagradost.cloudstream3.utils.M3u8Helper
 import org.jsoup.nodes.Document
 
 class ThiraiOneExtractor : ExtractorApi() {
@@ -223,11 +224,11 @@ class ThiraiOneExtractor : ExtractorApi() {
                 } else {
                     callback.invoke(
                         ExtractorLink(
-                            source = name,
-                            name = name,
-                            url = src,
-                            referer = referer,
-                            quality = Qualities.Unknown.value,
+                            name,
+                            name,
+                            src,
+                            referer,
+                            Qualities.Unknown.value,
                             isM3u8 = false
                         )
                     )
@@ -291,11 +292,11 @@ class ThiraiOneExtractor : ExtractorApi() {
                 }
                 callback.invoke(
                     ExtractorLink(
-                        source = name,
-                        name = name,
-                        url = fileUrl,
-                        referer = referer,
-                        quality = Qualities.Unknown.value,
+                        name,
+                        name,
+                        fileUrl,
+                        referer,
+                        Qualities.Unknown.value,
                         isM3u8 = fileUrl.contains(".m3u8")
                     )
                 )
@@ -326,11 +327,11 @@ class ThiraiOneExtractor : ExtractorApi() {
                     } else {
                         callback.invoke(
                             ExtractorLink(
-                                source = name,
-                                name = name,
-                                url = fileUrl,
-                                referer = referer,
-                                quality = Qualities.Unknown.value,
+                                name,
+                                name,
+                                fileUrl,
+                                referer,
+                                Qualities.Unknown.value,
                                 isM3u8 = false
                             )
                         )
@@ -373,11 +374,11 @@ class ThiraiOneExtractor : ExtractorApi() {
                     } else {
                         callback.invoke(
                             ExtractorLink(
-                                source = name,
-                                name = name,
-                                url = videoUrl,
-                                referer = referer,
-                                quality = Qualities.Unknown.value,
+                                name,
+                                name,
+                                videoUrl,
+                                referer,
+                                Qualities.Unknown.value,
                                 isM3u8 = false
                             )
                         )
@@ -469,11 +470,11 @@ class ThiraiOneExtractor : ExtractorApi() {
                     
                     callback.invoke(
                         ExtractorLink(
-                            source = qualityName,
-                            name = qualityName,
-                            url = variantUrl,
-                            referer = referer,
-                            quality = currentQuality,
+                            qualityName,
+                            qualityName,
+                            variantUrl,
+                            referer,
+                            currentQuality,
                             isM3u8 = true
                         )
                     )
@@ -488,11 +489,11 @@ class ThiraiOneExtractor : ExtractorApi() {
             if (!playlistContent.contains("#EXT-X-STREAM-INF:")) {
                 callback.invoke(
                     ExtractorLink(
-                        source = name,
-                        name = name,
-                        url = masterUrl,
-                        referer = referer,
-                        quality = Qualities.Unknown.value,
+                        name,
+                        name,
+                        masterUrl,
+                        referer,
+                        Qualities.Unknown.value,
                         isM3u8 = true
                     )
                 )
@@ -502,11 +503,11 @@ class ThiraiOneExtractor : ExtractorApi() {
             // Fallback: return the URL as-is
             callback.invoke(
                 ExtractorLink(
-                    source = name,
-                    name = name,
-                    url = masterUrl,
-                    referer = referer,
-                    quality = Qualities.Unknown.value,
+                    name,
+                    name,
+                    masterUrl,
+                    referer,
+                    Qualities.Unknown.value,
                     isM3u8 = true
                 )
             )
