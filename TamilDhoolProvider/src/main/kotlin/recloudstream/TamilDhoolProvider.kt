@@ -11,20 +11,22 @@ class TamilDhoolProvider : MainAPI() {
     override var lang = "ta"
     override val hasMainPage = true
 
-    private data class PageData(val name: String, val url: String)
-    
-    private val mainPages = listOf(
-        PageData("Vijay TV Serial", "$mainUrl/vijay-tv/vijay-tv-serial/"),
-        PageData("Vijay TV Show", "$mainUrl/vijay-tv/vijay-tv-show/"),
-        PageData("Zee Tamil Serial", "$mainUrl/zee-tamil/zee-tamil-serial/"),
-        PageData("Zee Tamil Show", "$mainUrl/zee-tamil/zee-tamil-show/"),
-        PageData("Sun TV Serial", "$mainUrl/sun-tv/sun-tv-serial/"),
-        PageData("Sun TV Show", "$mainUrl/sun-tv/sun-tv-show/"),
-        PageData("Kalaignar TV", "$mainUrl/kalaignar-tv/")
+    override val mainPage = mainPageOf(
+        "$mainUrl/vijay-tv/vijay-tv-serial/" to "Vijay TV Serials",
+        "$mainUrl/vijay-tv/vijay-tv-show/" to "Vijay TV Shows",
+        "$mainUrl/sun-tv/sun-tv-serial/" to "Sun TV Serials",
+        "$mainUrl/sun-tv/sun-tv-show/" to "Sun TV Shows",
+        "$mainUrl/zee-tamil/zee-tamil-serial/" to "Zee Tamil Serials",
+        "$mainUrl/zee-tamil/zee-tamil-show/" to "Zee Tamil Shows",
+        "$mainUrl/kalaignar-tv/" to "Kalaignar TV"
     )
 
-    override val mainPage = mainPages.map {
-        MainPageData(it.name, it.url, false)
+    private fun cleanTitle(title: String): String {
+        return title
+            .replace(Regex("(?i)\\s*(Vijay\\s*Tv\\s*(Serial|Show)|Zee\\s*Tamil\\s*(Serial|Show)|Sun\\s*Tv\\s*(Serial|Show)|Kalaignar\\s*Tv\\s*(Serial|Show)?|\\|\\s*On\\s*Kalaignar\\s*TV)\\s*"), "")
+            .replace(Regex("(?i)\\s*-\\s*(Vijay|Zee|Sun|Kalaignar)\\s*(TV|Tamil)\\s*"), "")
+            .replace(Regex("(?i)\\s*\\|\\s*(Tamil|Serial|Show)\\s*"), "")
+            .trim()
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -45,7 +47,8 @@ class TamilDhoolProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
-        val title = this.selectFirst("h3.entry-title a")?.text() ?: return null
+        val rawTitle = this.selectFirst("h3.entry-title a")?.text() ?: return null
+        val title = cleanTitle(rawTitle)
         val href = fixUrlNull(this.selectFirst("h3.entry-title a")?.attr("href")) ?: return null
         val posterUrl = fixUrlNull(
             this.selectFirst("div.post-thumb img")?.attr("data-src-webp") 
@@ -72,7 +75,8 @@ class TamilDhoolProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse {
         val doc = app.get(url).document
         
-        val title = doc.selectFirst("h1.entry-title")?.text() ?: "Unknown"
+        val rawTitle = doc.selectFirst("h1.entry-title")?.text() ?: "Unknown"
+        val title = cleanTitle(rawTitle)
         val poster = doc.selectFirst("div.entry-cover")?.attr("style")?.let {
             Regex("url\\('([^']+)'\\)").find(it)?.groupValues?.get(1)
         } ?: doc.selectFirst("meta[property=og:image]")?.attr("content")
@@ -122,61 +126,100 @@ class TamilDhoolProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        // If it's a tamilbliss link, extract video parameter
-        if (data.contains("tamilbliss.com")) {
-            val videoId = Regex("video=([^&]+)").find(data)?.groupValues?.get(1) ?: return false
-            
-            // Check if it's Dailymotion (starts with 'k' and very long)
-            if (videoId.startsWith("k") && videoId.length > 10) {
-                loadExtractor(
-                    "https://www.dailymotion.com/embed/video/$videoId",
-                    subtitleCallback,
-                    callback
-                )
-            } else {
-                // JW Player - follow redirect chain to get Thrfive embed
-                try {
-                    // Step 1: Get tamilbliss page with referer
-                    val tamilblissResponse = app.get(
-                        data,
-                        referer = mainUrl,
-                        allowRedirects = true
-                    )
-                    
-                    // Step 2: Get the final redirected page (startuphappy or similar)
-                    val playerDoc = tamilblissResponse.document
-                    
-                    // Step 3: Extract iframe embed URL (thrfive.io)
-                    val embedUrl = playerDoc.selectFirst("iframe[src*=thrfive]")?.attr("src")
-                        ?: playerDoc.selectFirst("iframe[src*=embed]")?.attr("src")
-                    
-                    if (embedUrl != null) {
-                        // Extract Thrfive video
-                        extractThrfive(embedUrl, callback)
-                    }
-                } catch (e: Exception) {
-                    // Fallback: construct thrfive URL directly
-                    extractThrfive("https://thrfive.io/embed/$videoId", callback)
+        var foundLinks = false
+        
+        try {
+            val document = app.get(data).document
+
+            // Method 1: Direct thrfive.io iframe detection (highest priority)
+            val thrfiveIframes = document.select("iframe[src*='thrfive.io/embed/']")
+            for (iframe in thrfiveIframes) {
+                val embedUrl = iframe.attr("src")
+                if (embedUrl.isNotEmpty()) {
+                    extractThrfive(embedUrl, callback)
+                    foundLinks = true
                 }
             }
-        } else {
-            // Load the episode page and extract video links recursively
-            val doc = app.get(data).document
-            
-            doc.select("figure.td-featured-thumb").forEach { elem ->
-                val episodeUrl = elem.selectFirst("a[href*=tamilbliss]")?.attr("href") ?: return@forEach
+
+            // Method 2: TamilBliss links - check for video parameter
+            val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
+            for (link in tamilBlissLinks) {
+                val href = link.attr("href")
+                val videoIdMatch = Regex("video=([^&]+)").find(href)
                 
-                // Recursively call loadLinks with the extracted URL
-                loadLinks(episodeUrl, isCasting, subtitleCallback, callback)
+                if (videoIdMatch != null) {
+                    val videoId = videoIdMatch.groups[1]?.value ?: continue
+                    
+                    // Check if it's Dailymotion (starts with 'k' and is long)
+                    if (videoId.startsWith("k") && videoId.length > 10) {
+                        loadExtractor(
+                            "https://www.dailymotion.com/embed/video/$videoId",
+                            subtitleCallback,
+                            callback
+                        )
+                        foundLinks = true
+                    } else {
+                        // JW Player / Thrfive - follow redirect chain
+                        try {
+                            val tamilblissResponse = app.get(
+                                href,
+                                referer = mainUrl,
+                                allowRedirects = true
+                            )
+                            
+                            val playerDoc = tamilblissResponse.document
+                            val embedUrl = playerDoc.selectFirst("iframe[src*=thrfive]")?.attr("src")
+                                ?: playerDoc.selectFirst("iframe[src*=embed]")?.attr("src")
+                            
+                            if (embedUrl != null) {
+                                extractThrfive(embedUrl, callback)
+                                foundLinks = true
+                            }
+                        } catch (e: Exception) {
+                            // Fallback: construct thrfive URL directly
+                            extractThrfive("https://thrfive.io/embed/$videoId", callback)
+                            foundLinks = true
+                        }
+                    }
+                }
             }
+            
+            // Method 3: Look for Dailymotion embeds
+            val dailymotionEmbeds = document.select("iframe[src*='dailymotion.com']")
+            for (iframe in dailymotionEmbeds) {
+                val src = iframe.attr("src")
+                loadExtractor(src, subtitleCallback, callback)
+                foundLinks = true
+            }
+            
+            // Method 4: Look for dai.ly short links
+            val shortLinks = document.select("a[href*='dai.ly']")
+            for (link in shortLinks) {
+                val href = link.attr("href")
+                val videoIdMatch = Regex("dai\\.ly/([a-zA-Z0-9]+)").find(href)
+                if (videoIdMatch != null) {
+                    val videoId = videoIdMatch.groups[1]?.value
+                    if (videoId != null) {
+                        loadExtractor(
+                            "https://www.dailymotion.com/embed/video/$videoId",
+                            subtitleCallback,
+                            callback
+                        )
+                        foundLinks = true
+                    }
+                }
+            }
+            
+        } catch (e: Exception) {
+            return false
         }
         
-        return true
+        return foundLinks
     }
     
     private suspend fun extractThrfive(embedUrl: String, callback: (ExtractorLink) -> Unit) {
         try {
-            // Load the thrfive embed page
+            // Load the thrfive embed page with proper referer
             val embedDoc = app.get(
                 embedUrl,
                 referer = "https://tamilbliss.com/"
@@ -185,7 +228,7 @@ class TamilDhoolProvider : MainAPI() {
             // Extract the full HTML including scripts
             val html = embedDoc.html()
             
-            // Method 1: Look for direct m3u8 URL in scripts/HTML
+            // Method 1: Look for coke.infamous.network m3u8 URL
             val m3u8Regex = Regex("""https://coke\.infamous\.network/stream/[^\s"'\\]+\.m3u8""")
             val m3u8Match = m3u8Regex.find(html)
             
@@ -204,7 +247,7 @@ class TamilDhoolProvider : MainAPI() {
                     }
                 )
             } else {
-                // Method 2: Generic stream URL pattern
+                // Method 2: Generic stream URL pattern (for mirrors)
                 val genericM3u8Regex = Regex("""https://[^/]+/stream/[^\s"'\\]+\.m3u8""")
                 val genericMatch = genericM3u8Regex.find(html)
                 
