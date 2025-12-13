@@ -1,6 +1,6 @@
 {
-    "name": "Cloudstream providers repository",
-    "description": "Cloudstream extension Repository",
+    "name": "TAMIL V1",
+    "description": "Tamil Media HUB",
     "manifestVersion": 1,
     "pluginLists": [
       "https://raw.githubusercontent.com/aravinddwara/extensions/builds/plugins.json"
