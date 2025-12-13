@@ -1,5 +1,5 @@
-package com.example
-//13/12/2025
+package recloudstream
+
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
@@ -88,22 +88,20 @@ class TamilDhoolProvider : MainAPI() {
             val sourceLabel = elem.selectFirst("div.td-source-label")?.text() ?: "Source ${index + 1}"
             
             episodes.add(
-                Episode(
-                    data = episodeUrl,
-                    name = "$title - $sourceLabel",
-                    episode = index + 1
-                )
+                newEpisode(episodeUrl) {
+                    this.name = "$title - $sourceLabel"
+                    this.episode = index + 1
+                }
             )
         }
         
         // If no episodes found, add the page itself as an episode
         if (episodes.isEmpty()) {
             episodes.add(
-                Episode(
-                    data = url,
-                    name = title,
-                    episode = 1
-                )
+                newEpisode(url) {
+                    this.name = title
+                    this.episode = 1
+                }
             )
         }
 
@@ -195,7 +193,7 @@ class TamilDhoolProvider : MainAPI() {
                 val m3u8Url = m3u8Match.value
                 
                 callback.invoke(
-                    ExtractorLink(
+                    newExtractorLink(
                         source = name,
                         name = "Thrfive - HLS",
                         url = m3u8Url,
@@ -213,7 +211,7 @@ class TamilDhoolProvider : MainAPI() {
                     val m3u8Url = genericMatch.value
                     
                     callback.invoke(
-                        ExtractorLink(
+                        newExtractorLink(
                             source = name,
                             name = "Thrfive - HLS",
                             url = m3u8Url,
