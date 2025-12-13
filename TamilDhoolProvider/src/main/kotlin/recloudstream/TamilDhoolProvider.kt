@@ -194,13 +194,13 @@ class TamilDhoolProvider : MainAPI() {
                 
                 callback.invoke(
                     newExtractorLink(
-                        source = name,
                         name = "Thrfive - HLS",
-                        url = m3u8Url,
-                        referer = "https://tamilbliss.com/",
-                        quality = Qualities.Unknown.value,
-                        isM3u8 = true
-                    )
+                        url = m3u8Url
+                    ) {
+                        this.referer = "https://tamilbliss.com/"
+                        this.quality = Qualities.Unknown.value
+                        this.isM3u8 = true
+                    }
                 )
             } else {
                 // Method 2: Generic stream URL pattern
@@ -212,13 +212,13 @@ class TamilDhoolProvider : MainAPI() {
                     
                     callback.invoke(
                         newExtractorLink(
-                            source = name,
                             name = "Thrfive - HLS",
-                            url = m3u8Url,
-                            referer = "https://tamilbliss.com/",
-                            quality = Qualities.Unknown.value,
-                            isM3u8 = true
-                        )
+                            url = m3u8Url
+                        ) {
+                            this.referer = "https://tamilbliss.com/"
+                            this.quality = Qualities.Unknown.value
+                            this.isM3u8 = true
+                        }
                     )
                 }
             }
