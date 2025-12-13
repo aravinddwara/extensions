@@ -236,14 +236,11 @@ class TamilDhoolProvider : MainAPI() {
                 val m3u8Url = m3u8Match.value
                 
                 callback.invoke(
-                    ExtractorLink(
+                    M3u8Helper.generateM3u8(
                         source = name,
-                        name = "Thrfive - HLS",
-                        url = m3u8Url,
-                        referer = "https://tamilbliss.com/",
-                        quality = Qualities.Unknown.value,
-                        isM3u8 = true
-                    )
+                        streamUrl = m3u8Url,
+                        referer = "https://tamilbliss.com/"
+                    ).first()
                 )
             } else {
                 // Method 2: Generic stream URL pattern (for mirrors)
@@ -254,14 +251,11 @@ class TamilDhoolProvider : MainAPI() {
                     val m3u8Url = genericMatch.value
                     
                     callback.invoke(
-                        ExtractorLink(
+                        M3u8Helper.generateM3u8(
                             source = name,
-                            name = "Thrfive - HLS",
-                            url = m3u8Url,
-                            referer = "https://tamilbliss.com/",
-                            quality = Qualities.Unknown.value,
-                            isM3u8 = true
-                        )
+                            streamUrl = m3u8Url,
+                            referer = "https://tamilbliss.com/"
+                        ).first()
                     )
                 }
             }
