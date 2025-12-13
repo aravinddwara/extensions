@@ -7,7 +7,7 @@ import org.jsoup.nodes.Element
 class TamilDhoolProvider : MainAPI() {
     override var mainUrl = "https://www.tamildhool.tech"
     override var name = "TamilDhool"
-    override val supportedTypes = setOf(TvType.TvSeries)
+    override val supportedTypes = setOf(TvType.Movie)
     override var lang = "ta"
     override val hasMainPage = true
 
@@ -40,7 +40,7 @@ class TamilDhoolProvider : MainAPI() {
             list = HomePageList(
                 name = request.name,
                 list = episodes,
-                isHorizontalImages = false
+                isHorizontalImages = true
             ),
             hasNext = doc.selectFirst("a.next.page-numbers") != null
         )
@@ -55,10 +55,10 @@ class TamilDhoolProvider : MainAPI() {
                 ?: this.selectFirst("div.post-thumb img")?.attr("src")
         )
 
-        return newTvSeriesSearchResponse(
+        return newMovieSearchResponse(
             name = title,
             url = href,
-            type = TvType.TvSeries
+            type = TvType.Movie
         ) {
             this.posterUrl = posterUrl
         }
@@ -77,43 +77,19 @@ class TamilDhoolProvider : MainAPI() {
         
         val rawTitle = doc.selectFirst("h1.entry-title")?.text() ?: "Unknown"
         val title = cleanTitle(rawTitle)
+        
+        // Get landscape poster from entry-cover background
         val poster = doc.selectFirst("div.entry-cover")?.attr("style")?.let {
             Regex("url\\('([^']+)'\\)").find(it)?.groupValues?.get(1)
         } ?: doc.selectFirst("meta[property=og:image]")?.attr("content")
         
         val description = doc.selectFirst("div.entry-content p")?.text()
         
-        // Extract video sources from the page
-        val episodes = mutableListOf<Episode>()
-        
-        // Look for video links in the content
-        doc.select("figure.td-featured-thumb").forEachIndexed { index, elem ->
-            val episodeUrl = elem.selectFirst("a[href*=tamilbliss]")?.attr("href") ?: return@forEachIndexed
-            val sourceLabel = elem.selectFirst("div.td-source-label")?.text() ?: "Source ${index + 1}"
-            
-            episodes.add(
-                newEpisode(episodeUrl) {
-                    this.name = "$title - $sourceLabel"
-                    this.episode = index + 1
-                }
-            )
-        }
-        
-        // If no episodes found, add the page itself as an episode
-        if (episodes.isEmpty()) {
-            episodes.add(
-                newEpisode(url) {
-                    this.name = title
-                    this.episode = 1
-                }
-            )
-        }
-
-        return newTvSeriesLoadResponse(
+        return newMovieLoadResponse(
             name = title,
             url = url,
-            type = TvType.TvSeries,
-            episodes = episodes
+            type = TvType.Movie,
+            dataUrl = url
         ) {
             this.posterUrl = poster
             this.plot = description
@@ -131,17 +107,7 @@ class TamilDhoolProvider : MainAPI() {
         try {
             val document = app.get(data).document
 
-            // Method 1: Direct thrfive.io iframe detection (highest priority)
-            val thrfiveIframes = document.select("iframe[src*='thrfive.io/embed/']")
-            for (iframe in thrfiveIframes) {
-                val embedUrl = iframe.attr("src")
-                if (embedUrl.isNotEmpty()) {
-                    extractThrfive(embedUrl, callback)
-                    foundLinks = true
-                }
-            }
-
-            // Method 2: TamilBliss links - check for video parameter
+            // Method 1: TamilBliss links - check for video parameter
             val tamilBlissLinks = document.select("a[href*='tamilbliss.com']")
             for (link in tamilBlissLinks) {
                 val href = link.attr("href")
@@ -152,8 +118,9 @@ class TamilDhoolProvider : MainAPI() {
                     
                     // Check if it's Dailymotion (starts with 'k' and is long)
                     if (videoId.startsWith("k") && videoId.length > 10) {
+                        // Use standard dailymotion.com/video/ URL format
                         loadExtractor(
-                            "https://www.dailymotion.com/embed/video/$videoId",
+                            "https://www.dailymotion.com/video/$videoId",
                             subtitleCallback,
                             callback
                         )
@@ -184,6 +151,16 @@ class TamilDhoolProvider : MainAPI() {
                 }
             }
             
+            // Method 2: Direct thrfive.io iframe detection
+            val thrfiveIframes = document.select("iframe[src*='thrfive.io/embed/']")
+            for (iframe in thrfiveIframes) {
+                val embedUrl = iframe.attr("src")
+                if (embedUrl.isNotEmpty()) {
+                    extractThrfive(embedUrl, callback)
+                    foundLinks = true
+                }
+            }
+            
             // Method 3: Look for Dailymotion embeds
             val dailymotionEmbeds = document.select("iframe[src*='dailymotion.com']")
             for (iframe in dailymotionEmbeds) {
@@ -201,7 +178,7 @@ class TamilDhoolProvider : MainAPI() {
                     val videoId = videoIdMatch.groups[1]?.value
                     if (videoId != null) {
                         loadExtractor(
-                            "https://www.dailymotion.com/embed/video/$videoId",
+                            "https://www.dailymotion.com/video/$videoId",
                             subtitleCallback,
                             callback
                         )
