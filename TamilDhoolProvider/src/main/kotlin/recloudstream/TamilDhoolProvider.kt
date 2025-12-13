@@ -181,38 +181,60 @@ class TamilDhoolProvider : MainAPI() {
     private suspend fun extractThrfive(embedUrl: String, refererUrl: String, callback: (ExtractorLink) -> Unit) {
         try {
             // Load the thrfive embed page
-            // IMPORTANT: Use tamildhool.tech as referer, NOT tamilbliss.com
-            val embedDoc = app.get(
+            // IMPORTANT: Use tamildhool.tech as referer
+            val embedResponse = app.get(
                 embedUrl,
                 referer = mainUrl
-            ).document
+            )
             
-            // Extract the full HTML including scripts
+            val embedDoc = embedResponse.document
             val html = embedDoc.html()
             
-            // Look for m3u8 URL in the HTML/scripts
-            // Pattern 1: coke.infamous.network (primary)
-            val m3u8Regex = Regex("""https://coke\.infamous\.network/stream/[^\s"'\\]+\.m3u8""")
-            var m3u8Match = m3u8Regex.find(html)
-            
-            // Pattern 2: Generic stream pattern (fallback for mirrors)
-            if (m3u8Match == null) {
-                val genericM3u8Regex = Regex("""https://[^/]+/stream/[^\s"'\\]+\.m3u8""")
-                m3u8Match = genericM3u8Regex.find(html)
+            // Debug: Log the HTML length to verify we got content
+            if (html.isEmpty()) {
+                return
             }
             
-            if (m3u8Match != null) {
-                val m3u8Url = m3u8Match.value
+            // Method 1: Look for m3u8 in source/file/sources patterns
+            val patterns = listOf(
+                Regex("""file["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']"""),
+                Regex("""source["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']"""),
+                Regex("""sources["']?\s*:\s*\[?\s*["']([^"']+\.m3u8[^"']*)["']"""),
+                Regex("""https://coke\.infamous\.network/stream/[^\s"'\\]+\.m3u8"""),
+                Regex("""https://[^/\s"'\\]+/stream/[^\s"'\\]+\.m3u8""")
+            )
+            
+            var m3u8Url: String? = null
+            
+            for (pattern in patterns) {
+                val match = pattern.find(html)
+                if (match != null) {
+                    m3u8Url = match.groupValues.getOrNull(1) ?: match.groupValues.getOrNull(0)
+                    if (m3u8Url != null && m3u8Url.contains(".m3u8")) {
+                        break
+                    }
+                }
+            }
+            
+            if (m3u8Url != null) {
+                // Clean up the URL if needed
+                m3u8Url = m3u8Url.trim()
+                if (m3u8Url.startsWith("//")) {
+                    m3u8Url = "https:$m3u8Url"
+                }
                 
-                // Use M3u8Helper with IMPORTANT referer: tamildhool.tech
-                M3u8Helper.generateM3u8(
+                // Use M3u8Helper with tamildhool.tech as referer
+                val links = M3u8Helper.generateM3u8(
                     source = name,
                     streamUrl = m3u8Url,
-                    referer = mainUrl  // Use mainUrl (tamildhool.tech) as referer
-                ).forEach(callback)
+                    referer = mainUrl
+                )
+                
+                links.forEach(callback)
             }
         } catch (e: Exception) {
-            // Silent fail - video extraction failed
+            // Log error for debugging
+            e.printStackTrace()
         }
     }
 }
