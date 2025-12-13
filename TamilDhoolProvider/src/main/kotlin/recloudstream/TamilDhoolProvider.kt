@@ -235,13 +235,12 @@ class TamilDhoolProvider : MainAPI() {
             if (m3u8Match != null) {
                 val m3u8Url = m3u8Match.value
                 
-                callback.invoke(
-                    M3u8Helper.generateM3u8(
-                        source = name,
-                        streamUrl = m3u8Url,
-                        referer = "https://tamilbliss.com/"
-                    ).first()
-                )
+                // Use M3u8Helper to parse and extract all qualities
+                M3u8Helper.generateM3u8(
+                    source = name,
+                    streamUrl = m3u8Url,
+                    referer = "https://tamilbliss.com/"
+                ).forEach(callback)
             } else {
                 // Method 2: Generic stream URL pattern (for mirrors)
                 val genericM3u8Regex = Regex("""https://[^/]+/stream/[^\s"'\\]+\.m3u8""")
@@ -250,13 +249,12 @@ class TamilDhoolProvider : MainAPI() {
                 if (genericMatch != null) {
                     val m3u8Url = genericMatch.value
                     
-                    callback.invoke(
-                        M3u8Helper.generateM3u8(
-                            source = name,
-                            streamUrl = m3u8Url,
-                            referer = "https://tamilbliss.com/"
-                        ).first()
-                    )
+                    // Use M3u8Helper to parse and extract all qualities
+                    M3u8Helper.generateM3u8(
+                        source = name,
+                        streamUrl = m3u8Url,
+                        referer = "https://tamilbliss.com/"
+                    ).forEach(callback)
                 }
             }
         } catch (e: Exception) {
