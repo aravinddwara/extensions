@@ -3,7 +3,7 @@
     <!-- Permissions for WebView and network access -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-</manifest>
+
 
 === TamilDhoolProvider/src/main/kotlin/recloudstream/TamilDhoolPlugin.kt ===
 package recloudstream
@@ -18,3 +18,5 @@ class TamilDhoolPlugin: Plugin() {
         registerMainAPI(TamilDhoolProvider())
     }
 }
+    
+</manifest>
