@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest />
+<manifest package="com.lagradost.TamilDhoolProvider">
+    <!-- Permissions for WebView and network access -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+</manifest>
 
 === TamilDhoolProvider/src/main/kotlin/recloudstream/TamilDhoolPlugin.kt ===
 package recloudstream
