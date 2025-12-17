@@ -3,20 +3,5 @@
     <!-- Permissions for WebView and network access -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-
-=== TamilDhoolProvider/src/main/kotlin/recloudstream/TamilDhoolPlugin.kt ===
-package recloudstream
-
-import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
-import com.lagradost.cloudstream3.plugins.Plugin
-import android.content.Context
-
-@CloudstreamPlugin
-class TamilDhoolPlugin: Plugin() {
-    override fun load(context: Context) {
-        registerMainAPI(TamilDhoolProvider())
-    }
-}
-    
+   
 </manifest>
