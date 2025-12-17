@@ -78,7 +78,6 @@ class TamilDhoolProvider : MainAPI() {
         val rawTitle = doc.selectFirst("h1.entry-title")?.text() ?: "Unknown"
         val title = cleanTitle(rawTitle)
         
-        // Get landscape poster from entry-cover background
         val poster = doc.selectFirst("div.entry-cover")?.attr("style")?.let {
             Regex("url\\('([^']+)'\\)").find(it)?.groupValues?.get(1)
         } ?: doc.selectFirst("meta[property=og:image]")?.attr("content")
@@ -116,9 +115,8 @@ class TamilDhoolProvider : MainAPI() {
                 if (videoIdMatch != null) {
                     val videoId = videoIdMatch.groups[1]?.value ?: continue
                     
-                    // Check if it's Dailymotion (starts with 'k' and is long)
-                    if (videoId.startsWith("k") && videoId.length > 10) {
-                        // Use standard dailymotion.com/video/ URL format
+                    // Check if it's Dailymotion (starts with 'k' or 'x')
+                    if ((videoId.startsWith("k") || videoId.startsWith("x")) && videoId.length > 10) {
                         loadExtractor(
                             "https://www.dailymotion.com/video/$videoId",
                             subtitleCallback,
@@ -127,7 +125,6 @@ class TamilDhoolProvider : MainAPI() {
                         foundLinks = true
                     } else {
                         // JW Player / Thrfive
-                        // Construct thrfive embed URL directly
                         val thrfiveUrl = "https://thrfive.io/embed/$videoId"
                         extractThrfive(thrfiveUrl, data, callback)
                         foundLinks = true
@@ -172,7 +169,7 @@ class TamilDhoolProvider : MainAPI() {
             }
             
         } catch (e: Exception) {
-            return false
+            e.printStackTrace()
         }
         
         return foundLinks
@@ -180,60 +177,101 @@ class TamilDhoolProvider : MainAPI() {
     
     private suspend fun extractThrfive(embedUrl: String, refererUrl: String, callback: (ExtractorLink) -> Unit) {
         try {
-            // Load the thrfive embed page
-            // IMPORTANT: Use tamildhool.tech as referer
-            val embedResponse = app.get(
+            // Use WebView to bypass Cloudflare and wait for JW Player to load the M3U8
+            val html = app.get(
                 embedUrl,
-                referer = mainUrl
-            )
+                referer = refererUrl,
+                interceptor = WebViewResolver(
+                    // Wait for the stream domain to appear in the page
+                    Regex("""(coke\.infamous\.network|khufu\.groovy\.monster)""")
+                )
+            ).text
             
-            val embedDoc = embedResponse.document
-            val html = embedDoc.html()
-            
-            // Debug: Log the HTML length to verify we got content
-            if (html.isEmpty()) {
-                return
-            }
-            
-            // Method 1: Look for m3u8 in source/file/sources patterns
-            val patterns = listOf(
-                Regex("""file["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']"""),
-                Regex("""source["']?\s*:\s*["']([^"']+\.m3u8[^"']*)["']"""),
-                Regex("""sources["']?\s*:\s*\[?\s*["']([^"']+\.m3u8[^"']*)["']"""),
-                Regex("""https://coke\.infamous\.network/stream/[^\s"'\\]+\.m3u8"""),
-                Regex("""https://[^/\s"'\\]+/stream/[^\s"'\\]+\.m3u8""")
+            // Extract M3U8 URLs using multiple patterns
+            val m3u8Patterns = listOf(
+                // Direct M3U8 URLs in the page
+                Regex("""(https://coke\.infamous\.network/stream/[A-Za-z0-9+/=_-]+\.m3u8)"""),
+                Regex("""(https://khufu\.groovy\.monster/stream/[A-Za-z0-9+/=_-]+\.m3u8)"""),
+                // URL-encoded in JW Player analytics
+                Regex("""mu=([^&]+\.m3u8[^&]*)"""),
+                // In jwplayer setup/config
+                Regex("""file["']?\s*:\s*["']([^"']*(?:coke\.infamous\.network|khufu\.groovy\.monster)[^"']*)["']"""),
+                // In sources array
+                Regex("""sources.*?["']([^"']*(?:coke\.infamous\.network|khufu\.groovy\.monster)[^"']*)["']""")
             )
             
             var m3u8Url: String? = null
             
-            for (pattern in patterns) {
+            for (pattern in m3u8Patterns) {
                 val match = pattern.find(html)
                 if (match != null) {
-                    m3u8Url = match.groupValues.getOrNull(1) ?: match.groupValues.getOrNull(0)
-                    if (m3u8Url != null && m3u8Url.contains(".m3u8")) {
+                    var url = match.groupValues.lastOrNull { 
+                        it.contains("network") || it.contains("monster") 
+                    }
+                    
+                    if (!url.isNullOrEmpty()) {
+                        // Decode if URL-encoded
+                        if (url.contains("%2F") || url.contains("%3A")) {
+                            try {
+                                url = java.net.URLDecoder.decode(url, "UTF-8")
+                            } catch (e: Exception) {
+                                // Continue with non-decoded URL
+                            }
+                        }
+                        
+                        // Clean up
+                        url = url.trim().replace("\\", "")
+                        
+                        if (url.startsWith("//")) {
+                            url = "https:$url"
+                        }
+                        
+                        // Ensure it ends with .m3u8
+                        if (!url.endsWith(".m3u8") && url.contains("/stream/")) {
+                            url = "$url.m3u8"
+                        }
+                        
+                        m3u8Url = url
+                        break
+                    }
+                }
+            }
+            
+            // If still not found, look in script tags
+            if (m3u8Url == null) {
+                val scriptPattern = Regex("""<script[^>]*>(.*?)</script>""", RegexOption.DOT_MATCHES_ALL)
+                val scripts = scriptPattern.findAll(html)
+                
+                for (script in scripts) {
+                    val scriptContent = script.groupValues[1]
+                    
+                    val urlPattern = Regex("""(https://(?:coke\.infamous\.network|khufu\.groovy\.monster)/stream/[^\s"'<>]+)""")
+                    val urlMatch = urlPattern.find(scriptContent)
+                    
+                    if (urlMatch != null) {
+                        m3u8Url = urlMatch.groupValues[1]
+                        if (!m3u8Url!!.endsWith(".m3u8")) {
+                            m3u8Url = "$m3u8Url.m3u8"
+                        }
                         break
                     }
                 }
             }
             
             if (m3u8Url != null) {
-                // Clean up the URL if needed
-                m3u8Url = m3u8Url.trim()
-                if (m3u8Url.startsWith("//")) {
-                    m3u8Url = "https:$m3u8Url"
-                }
-                
-                // Use M3u8Helper with tamildhool.tech as referer
-                val links = M3u8Helper.generateM3u8(
+                // Generate M3U8 links with TamilDhool as referer (CRITICAL!)
+                M3u8Helper.generateM3u8(
                     source = name,
                     streamUrl = m3u8Url,
-                    referer = mainUrl
-                )
-                
-                links.forEach(callback)
+                    referer = refererUrl, // Use TamilDhool URL, not thrfive!
+                    headers = mapOf(
+                        "Origin" to mainUrl,
+                        "Accept" to "*/*"
+                    )
+                ).forEach(callback)
             }
+            
         } catch (e: Exception) {
-            // Log error for debugging
             e.printStackTrace()
         }
     }
