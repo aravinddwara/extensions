@@ -177,74 +177,155 @@ class TamilDhoolProvider : MainAPI() {
     
     private suspend fun extractThrfive(embedUrl: String, refererUrl: String, callback: (ExtractorLink) -> Unit) {
         try {
-            // Use WebView to bypass Cloudflare and wait for JW Player to load the M3U8
+            // METHOD 1: WebView with Play Button Click and Network Request Interception
+            var capturedM3u8: String? = null
+            
             val html = app.get(
                 embedUrl,
                 referer = refererUrl,
-                interceptor = WebViewResolver(
-                    // Wait for the stream domain to appear in the page
-                    Regex("""(coke\.infamous\.network|khufu\.groovy\.monster)""")
+                interceptor = object : Interceptor {
+                    override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
+                        val request = chain.request()
+                        val response = chain.proceed(request)
+                        
+                        // Intercept any request containing .m3u8
+                        val url = request.url.toString()
+                        if (url.contains(".m3u8") && 
+                            (url.contains("coke.infamous.network") || url.contains("khufu.groovy.monster"))) {
+                            capturedM3u8 = url
+                        }
+                        
+                        // Also check response body for m3u8 URLs
+                        if (response.body?.contentType()?.toString()?.contains("json") == true ||
+                            response.body?.contentType()?.toString()?.contains("javascript") == true) {
+                            val bodyString = response.body?.string() ?: ""
+                            
+                            val m3u8Match = Regex("""(https://(?:coke\.infamous\.network|khufu\.groovy\.monster)/stream/[^\s"']+\.m3u8)""")
+                                .find(bodyString)
+                            
+                            if (m3u8Match != null) {
+                                capturedM3u8 = m3u8Match.groupValues[1]
+                            }
+                            
+                            // Recreate response with original body
+                            return response.newBuilder()
+                                .body(okhttp3.ResponseBody.create(response.body?.contentType(), bodyString))
+                                .build()
+                        }
+                        
+                        return response
+                    }
+                },
+                webViewResolver = WebViewResolver(
+                    // Wait for stream domain to appear
+                    Regex("""(coke\.infamous\.network|khufu\.groovy\.monster|\.m3u8)"""),
+                    // JavaScript to click play and wait for video to load
+                    script = """
+                        new Promise((resolve) => {
+                            let resolved = false;
+                            
+                            // Function to try clicking play
+                            function tryPlay() {
+                                if (resolved) return;
+                                
+                                // Try multiple methods to click play
+                                const playSelectors = [
+                                    '.jw-display-icon-container',
+                                    '.jw-icon-display',
+                                    '.jw-display',
+                                    'button[aria-label*="play"]',
+                                    '.jw-controls-backdrop',
+                                    '.jw-preview'
+                                ];
+                                
+                                for (const selector of playSelectors) {
+                                    const element = document.querySelector(selector);
+                                    if (element) {
+                                        element.click();
+                                        break;
+                                    }
+                                }
+                                
+                                // Also try programmatic play if jwplayer is available
+                                if (window.jwplayer) {
+                                    try {
+                                        jwplayer().play();
+                                    } catch (e) {}
+                                }
+                            }
+                            
+                            // Wait for page to be ready
+                            setTimeout(() => {
+                                tryPlay();
+                                
+                                // Keep trying every second for 10 seconds
+                                let attempts = 0;
+                                const playInterval = setInterval(() => {
+                                    attempts++;
+                                    if (attempts >= 10 || resolved) {
+                                        clearInterval(playInterval);
+                                        if (!resolved) {
+                                            resolved = true;
+                                            resolve(document.documentElement.outerHTML);
+                                        }
+                                        return;
+                                    }
+                                    tryPlay();
+                                }, 1000);
+                                
+                            }, 2000); // Wait 2 seconds for initial page load
+                            
+                            // Also set a maximum timeout
+                            setTimeout(() => {
+                                if (!resolved) {
+                                    resolved = true;
+                                    resolve(document.documentElement.outerHTML);
+                                }
+                            }, 15000); // 15 second max timeout
+                        });
+                    """.trimIndent()
                 )
             ).text
             
-            // Extract M3U8 URLs using multiple patterns
-            val m3u8Patterns = listOf(
-                // Direct M3U8 URLs in the page
-                Regex("""(https://coke\.infamous\.network/stream/[A-Za-z0-9+/=_-]+\.m3u8)"""),
-                Regex("""(https://khufu\.groovy\.monster/stream/[A-Za-z0-9+/=_-]+\.m3u8)"""),
-                // URL-encoded in JW Player analytics
-                Regex("""mu=([^&]+\.m3u8[^&]*)"""),
-                // In jwplayer setup/config
-                Regex("""file["']?\s*:\s*["']([^"']*(?:coke\.infamous\.network|khufu\.groovy\.monster)[^"']*)["']"""),
-                // In sources array
-                Regex("""sources.*?["']([^"']*(?:coke\.infamous\.network|khufu\.groovy\.monster)[^"']*)["']""")
-            )
+            // Use captured m3u8 from network interception if available
+            var m3u8Url = capturedM3u8
             
-            var m3u8Url: String? = null
-            
-            for (pattern in m3u8Patterns) {
-                val match = pattern.find(html)
-                if (match != null) {
-                    var url = match.groupValues.lastOrNull { 
-                        it.contains("network") || it.contains("monster") 
-                    }
-                    
-                    if (!url.isNullOrEmpty()) {
-                        // Decode if URL-encoded
-                        if (url.contains("%2F") || url.contains("%3A")) {
-                            try {
-                                url = java.net.URLDecoder.decode(url, "UTF-8")
-                            } catch (e: Exception) {
-                                // Continue with non-decoded URL
-                            }
+            // METHOD 2: Extract from HTML if network interception didn't work
+            if (m3u8Url == null) {
+                val m3u8Patterns = listOf(
+                    Regex("""(https://coke\.infamous\.network/stream/[A-Za-z0-9+/=_-]+\.m3u8)"""),
+                    Regex("""(https://khufu\.groovy\.monster/stream/[A-Za-z0-9+/=_-]+\.m3u8)"""),
+                    Regex("""file["']?\s*:\s*["']([^"']*(?:coke\.infamous\.network|khufu\.groovy\.monster)[^"']*)["']"""),
+                    Regex("""sources.*?["']([^"']*(?:coke\.infamous\.network|khufu\.groovy\.monster)[^"']*)["']"""),
+                    Regex("""["'](https?://[^"']*(?:coke\.infamous\.network|khufu\.groovy\.monster)[^"']*\.m3u8[^"']*)["']""")
+                )
+                
+                for (pattern in m3u8Patterns) {
+                    val match = pattern.find(html)
+                    if (match != null) {
+                        var url = match.groupValues.lastOrNull { 
+                            it.contains("network") || it.contains("monster") 
                         }
                         
-                        // Clean up
-                        url = url.trim().replace("\\", "")
-                        
-                        if (url.startsWith("//")) {
-                            url = "https:$url"
+                        if (!url.isNullOrEmpty()) {
+                            url = url.trim().replace("\\", "")
+                            if (url.startsWith("//")) url = "https:$url"
+                            if (!url.endsWith(".m3u8") && url.contains("/stream/")) url = "$url.m3u8"
+                            
+                            m3u8Url = url
+                            break
                         }
-                        
-                        // Ensure it ends with .m3u8
-                        if (!url.endsWith(".m3u8") && url.contains("/stream/")) {
-                            url = "$url.m3u8"
-                        }
-                        
-                        m3u8Url = url
-                        break
                     }
                 }
             }
             
-            // If still not found, look in script tags
+            // METHOD 3: Parse from script tags
             if (m3u8Url == null) {
                 val scriptPattern = Regex("""<script[^>]*>(.*?)</script>""", RegexOption.DOT_MATCHES_ALL)
                 val scripts = scriptPattern.findAll(html)
                 
                 for (script in scripts) {
                     val scriptContent = script.groupValues[1]
-                    
                     val urlPattern = Regex("""(https://(?:coke\.infamous\.network|khufu\.groovy\.monster)/stream/[^\s"'<>]+)""")
                     val urlMatch = urlPattern.find(scriptContent)
                     
@@ -259,14 +340,15 @@ class TamilDhoolProvider : MainAPI() {
             }
             
             if (m3u8Url != null) {
-                // Generate M3U8 links with TamilDhool as referer (CRITICAL!)
+                // Generate M3U8 links with proper referer and headers
                 M3u8Helper.generateM3u8(
                     source = name,
                     streamUrl = m3u8Url,
-                    referer = refererUrl, // Use TamilDhool URL, not thrfive!
+                    referer = refererUrl, // Use TamilDhool URL as referer
                     headers = mapOf(
                         "Origin" to mainUrl,
-                        "Accept" to "*/*"
+                        "Accept" to "*/*",
+                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
                     )
                 ).forEach(callback)
             }
