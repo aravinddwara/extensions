@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest package="com.lagradost.TamilDhoolClickProvider">
+    <!-- Permissions for WebView and network access -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+   
+</manifest>
