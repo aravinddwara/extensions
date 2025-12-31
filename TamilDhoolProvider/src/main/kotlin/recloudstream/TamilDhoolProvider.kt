@@ -205,10 +205,7 @@ class TamilDhoolProvider : MainAPI() {
             val m3u8Url = decodeJuicyCodes(html)
             
             if (m3u8Url != null) {
-                // Get M3U8 variants with cookies and headers
-                val variants = getM3u8Variants(m3u8Url, refererUrl, cookieJar)
-                
-                // Prepare common headers with cookies
+                // Prepare headers with cookies
                 val streamHeaders = mapOf(
                     "Origin" to "https://thrfive.io",
                     "Referer" to refererUrl,
@@ -217,35 +214,13 @@ class TamilDhoolProvider : MainAPI() {
                     "Cookie" to cookieJar.entries.joinToString("; ") { "${it.key}=${it.value}" }
                 )
                 
-                if (variants.isNotEmpty()) {
-                    // Add all quality variants
-                    variants.forEach { variant ->
-                        callback.invoke(
-                            newExtractorLink(
-                                source = name,
-                                name = "$name - ${variant.quality}",
-                                url = variant.url,
-                                referer = refererUrl,
-                                quality = variant.qualityInt,
-                                type = ExtractorLinkType.M3U8,
-                                headers = streamHeaders
-                            )
-                        )
-                    }
-                } else {
-                    // No variants, use master playlist
-                    callback.invoke(
-                        newExtractorLink(
-                            source = name,
-                            name = "$name - Auto",
-                            url = m3u8Url,
-                            referer = refererUrl,
-                            quality = Qualities.Unknown.value,
-                            type = ExtractorLinkType.M3U8,
-                            headers = streamHeaders
-                        )
-                    )
-                }
+                // Use M3U8Helper to generate links with proper quality detection
+                M3u8Helper.generateM3u8(
+                    source = name,
+                    streamUrl = m3u8Url,
+                    referer = refererUrl,
+                    headers = streamHeaders
+                ).forEach(callback)
             }
             
         } catch (e: Exception) {
@@ -333,90 +308,5 @@ class TamilDhoolProvider : MainAPI() {
         }
         
         return null
-    }
-    
-    private data class M3u8Variant(
-        val url: String,
-        val quality: String,
-        val qualityInt: Int
-    )
-    
-    private suspend fun getM3u8Variants(
-        m3u8Url: String,
-        referer: String,
-        cookies: Map<String, String>
-    ): List<M3u8Variant> {
-        try {
-            val response = app.get(
-                m3u8Url,
-                headers = mapOf(
-                    "Referer" to referer,
-                    "Origin" to "https://thrfive.io",
-                    "Accept" to "*/*",
-                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    "Cookie" to cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
-                )
-            ).text
-            
-            val variants = mutableListOf<M3u8Variant>()
-            val lines = response.split("\n")
-            
-            for (i in lines.indices) {
-                val line = lines[i]
-                if (line.startsWith("#EXT-X-STREAM-INF:")) {
-                    // Extract resolution
-                    val resolutionMatch = Regex("""RESOLUTION=(\d+)x(\d+)""").find(line)
-                    val bandwidthMatch = Regex("""BANDWIDTH=(\d+)""").find(line)
-                    
-                    if (i + 1 < lines.size) {
-                        var variantUrl = lines[i + 1].trim()
-                        
-                        // Handle relative URLs
-                        if (!variantUrl.startsWith("http")) {
-                            val baseUrl = m3u8Url.substringBeforeLast("/")
-                            variantUrl = "$baseUrl/$variantUrl"
-                        }
-                        
-                        if (resolutionMatch != null) {
-                            val width = resolutionMatch.groupValues[1].toInt()
-                            val height = resolutionMatch.groupValues[2].toInt()
-                            val quality = "${height}p"
-                            val qualityInt = when {
-                                height >= 1080 -> Qualities.P1080.value
-                                height >= 720 -> Qualities.P720.value
-                                height >= 480 -> Qualities.P480.value
-                                height >= 360 -> Qualities.P360.value
-                                else -> Qualities.Unknown.value
-                            }
-                            
-                            variants.add(M3u8Variant(variantUrl, quality, qualityInt))
-                        } else if (bandwidthMatch != null) {
-                            // Estimate quality from bandwidth
-                            val bandwidth = bandwidthMatch.groupValues[1].toInt()
-                            val qualityInt = when {
-                                bandwidth > 3000000 -> Qualities.P1080.value
-                                bandwidth > 1500000 -> Qualities.P720.value
-                                bandwidth > 800000 -> Qualities.P480.value
-                                else -> Qualities.P360.value
-                            }
-                            val quality = when {
-                                bandwidth > 3000000 -> "1080p"
-                                bandwidth > 1500000 -> "720p"
-                                bandwidth > 800000 -> "480p"
-                                else -> "360p"
-                            }
-                            
-                            variants.add(M3u8Variant(variantUrl, quality, qualityInt))
-                        }
-                    }
-                }
-            }
-            
-            return variants.sortedByDescending { it.qualityInt }
-            
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return emptyList()
-        }
     }
 }
