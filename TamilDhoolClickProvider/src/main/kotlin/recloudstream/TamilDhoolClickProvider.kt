@@ -91,39 +91,33 @@ class TamilDhoolClickProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        var foundLinks = false
-        
         try {
             val document = app.get(data).document
 
-            // Find iframe with tamildhool.embed.lat and extract video ID
-            val embedIframe = document.selectFirst("iframe[src*='tamildhool.embed.lat']")
-            if (embedIframe != null) {
-                val embedSrc = embedIframe.attr("src")
-                val videoIdMatch = Regex("vid=([^&\"'\\s]+)").find(embedSrc)
+            // Method 1: Find iframe in single-post-video div
+            document.select("div.single-post-video iframe, iframe").forEach { iframe ->
+                val src = iframe.attr("src")
                 
-                if (videoIdMatch != null) {
-                    val videoId = videoIdMatch.groups[1]?.value
-                    if (!videoId.isNullOrEmpty()) {
-                        loadExtractor(
-                            "https://www.dailymotion.com/video/$videoId",
-                            subtitleCallback,
-                            callback
-                        )
-                        foundLinks = true
+                // Extract from tamildhool.embed.lat
+                if (src.contains("tamildhool.embed.lat")) {
+                    val videoIdMatch = Regex("vid=([^&\"'\\s]+)").find(src)
+                    if (videoIdMatch != null) {
+                        val videoId = videoIdMatch.groups[1]?.value
+                        if (!videoId.isNullOrEmpty()) {
+                            loadExtractor(
+                                "https://www.dailymotion.com/embed/video/$videoId",
+                                subtitleCallback,
+                                callback
+                            )
+                            return true
+                        }
                     }
                 }
-            }
-
-            // Fallback: Direct Dailymotion iframes
-            if (!foundLinks) {
-                val dailymotionEmbeds = document.select("iframe[src*='dailymotion.com']")
-                for (iframe in dailymotionEmbeds) {
-                    val src = iframe.attr("src")
-                    if (src.isNotEmpty()) {
-                        loadExtractor(src, subtitleCallback, callback)
-                        foundLinks = true
-                    }
+                
+                // Direct Dailymotion embed
+                if (src.contains("dailymotion.com")) {
+                    loadExtractor(src, subtitleCallback, callback)
+                    return true
                 }
             }
             
@@ -131,6 +125,6 @@ class TamilDhoolClickProvider : MainAPI() {
             e.printStackTrace()
         }
         
-        return foundLinks
+        return false
     }
 }
