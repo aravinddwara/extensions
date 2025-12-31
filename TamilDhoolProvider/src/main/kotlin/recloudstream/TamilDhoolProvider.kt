@@ -42,11 +42,11 @@ class TamilDhoolProvider : MainAPI() {
                     name = request.name,
                     list = listOf(
                         newMovieSearchResponse(
-                            name = "Sai Baba Live",
+                            name = "Sai Baba Temple Live",
                             url = SAI_BABA_LIVE,
                             type = TvType.Live
                         ) {
-                            this.posterUrl = "https://i.ibb.co/zVQDvnnv/LIVE.jpg"
+                            this.posterUrl = "https://via.placeholder.com/300x450/FF9933/FFFFFF?text=Sai+Baba+Live"
                         }
                     ),
                     isHorizontalImages = true
@@ -105,8 +105,8 @@ class TamilDhoolProvider : MainAPI() {
                 type = TvType.Live,
                 dataUrl = url
             ) {
-                this.posterUrl = "https://i.ibb.co/zVQDvnnv/LIVE.jpg"
-                this.plot = "Shri Sai Baba of Shirdi, also known as Shirdi Sai Baba, Shree Sainath was an Indian spiritual guru considered to be a saint, and revered by both Hindu and Muslim devotees during and after his lifetime. Sai Baba preached the importance of "realisation of the self" and criticised "love towards perishable things""
+                this.posterUrl = "https://via.placeholder.com/300x450/FF9933/FFFFFF?text=Sai+Baba+Live"
+                this.plot = "Live stream from Shirdi Sai Baba Temple"
             }
         }
 
@@ -145,7 +145,7 @@ class TamilDhoolProvider : MainAPI() {
                 
                 if (videoSrc != null) {
                     callback.invoke(
-                        ExtractorLink(
+                        newExtractorLink(
                             source = name,
                             name = "Sai Baba Live",
                             url = videoSrc,
