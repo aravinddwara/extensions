@@ -208,24 +208,27 @@ class TamilDhoolProvider : MainAPI() {
                 // Get M3U8 variants with cookies and headers
                 val variants = getM3u8Variants(m3u8Url, refererUrl, cookieJar)
                 
+                // Prepare common headers with cookies
+                val streamHeaders = mapOf(
+                    "Origin" to "https://thrfive.io",
+                    "Referer" to refererUrl,
+                    "Accept" to "*/*",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Cookie" to cookieJar.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                )
+                
                 if (variants.isNotEmpty()) {
                     // Add all quality variants
                     variants.forEach { variant ->
                         callback.invoke(
                             ExtractorLink(
-                                source = name,
-                                name = "$name - ${variant.quality}",
-                                url = variant.url,
-                                referer = refererUrl,
-                                quality = variant.qualityInt,
-                                isM3u8 = true,
-                                headers = mapOf(
-                                    "Origin" to "https://thrfive.io",
-                                    "Referer" to refererUrl,
-                                    "Accept" to "*/*",
-                                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                                    "Cookie" to cookieJar.entries.joinToString("; ") { "${it.key}=${it.value}" }
-                                )
+                                name,
+                                "$name - ${variant.quality}",
+                                variant.url,
+                                refererUrl,
+                                variant.qualityInt,
+                                true,
+                                streamHeaders
                             )
                         )
                     }
@@ -233,19 +236,13 @@ class TamilDhoolProvider : MainAPI() {
                     // No variants, use master playlist
                     callback.invoke(
                         ExtractorLink(
-                            source = name,
-                            name = "$name - Auto",
-                            url = m3u8Url,
-                            referer = refererUrl,
-                            quality = Qualities.Unknown.value,
-                            isM3u8 = true,
-                            headers = mapOf(
-                                "Origin" to "https://thrfive.io",
-                                "Referer" to refererUrl,
-                                "Accept" to "*/*",
-                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                                "Cookie" to cookieJar.entries.joinToString("; ") { "${it.key}=${it.value}" }
-                            )
+                            name,
+                            "$name - Auto",
+                            m3u8Url,
+                            refererUrl,
+                            Qualities.Unknown.value,
+                            true,
+                            streamHeaders
                         )
                     )
                 }
