@@ -144,16 +144,11 @@ class TamilDhoolProvider : MainAPI() {
                 val videoSrc = doc.selectFirst("video#example-video_html5_api")?.attr("src")
                 
                 if (videoSrc != null) {
-                    callback.invoke(
-                        ExtractorLink(
-                            name,
-                            "Sai Baba Live",
-                            videoSrc,
-                            SAI_BABA_PAGE,
-                            Qualities.Unknown.value,
-                            true
-                        )
-                    )
+                    M3u8Helper.generateM3u8(
+                        source = name,
+                        streamUrl = videoSrc,
+                        referer = SAI_BABA_PAGE
+                    ).forEach(callback)
                     return true
                 }
             } catch (e: Exception) {
