@@ -7,7 +7,7 @@ import org.jsoup.nodes.Element
 class TamilDhoolClickProvider : MainAPI() {
     override var mainUrl = "https://tamildhool.click"
     override var name = "TamilDhool Click"
-    override val supportedTypes = setOf(TvType.TvSeries, TvType.Live)
+    override val supportedTypes = setOf(TvType.Movie, TvType.Live)
     override var lang = "ta"
     override val hasMainPage = true
 
@@ -71,10 +71,10 @@ class TamilDhoolClickProvider : MainAPI() {
         val href = fixUrlNull(this.selectFirst("h2.post-box-title a")?.attr("href")) ?: return null
         val posterUrl = fixUrlNull(this.selectFirst("div.post-thumbnail img")?.attr("src"))
 
-        return newTvSeriesSearchResponse(
+        return newMovieSearchResponse(
             name = title,
             url = href,
-            type = TvType.TvSeries
+            type = TvType.Movie
         ) {
             this.posterUrl = posterUrl
         }
@@ -109,16 +109,11 @@ class TamilDhoolClickProvider : MainAPI() {
         val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
         val description = doc.selectFirst("div.entry p")?.text()
         
-        return newTvSeriesLoadResponse(
+        return newMovieLoadResponse(
             name = title,
             url = url,
-            type = TvType.TvSeries,
-            episodes = listOf(
-                Episode(
-                    data = url,
-                    name = title
-                )
-            )
+            type = TvType.Movie,
+            dataUrl = url
         ) {
             this.posterUrl = poster
             this.plot = description
