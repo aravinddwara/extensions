@@ -131,7 +131,7 @@ class TamilDhoolClickProvider : MainAPI() {
                 val doc = app.get(SAI_BABA_PAGE).document
                 val videoSrc = doc.selectFirst("video#example-video_html5_api")?.attr("src")
                 
-                if (videoSrc != null) {
+                if (!videoSrc.isNullOrEmpty()) {
                     M3u8Helper.generateM3u8(
                         source = name,
                         streamUrl = videoSrc,
@@ -151,14 +151,14 @@ class TamilDhoolClickProvider : MainAPI() {
             val document = app.get(data).document
 
             // Find iframe with tamildhool.embed.lat
-            val embedIframe = document.selectFirst("iframe[src*='tamildhool.embed.lat/player.php']")
+            val embedIframe = document.selectFirst("iframe[src*='tamildhool.embed.lat']")
             if (embedIframe != null) {
                 val embedSrc = embedIframe.attr("src")
-                val videoIdMatch = Regex("vid=([a-zA-Z0-9]+)").find(embedSrc)
+                val videoIdMatch = Regex("vid=([^&\"'\\s]+)").find(embedSrc)
                 
                 if (videoIdMatch != null) {
                     val videoId = videoIdMatch.groups[1]?.value
-                    if (videoId != null) {
+                    if (!videoId.isNullOrEmpty()) {
                         loadExtractor(
                             "https://www.dailymotion.com/video/$videoId",
                             subtitleCallback,
@@ -174,8 +174,10 @@ class TamilDhoolClickProvider : MainAPI() {
                 val dailymotionEmbeds = document.select("iframe[src*='dailymotion.com']")
                 for (iframe in dailymotionEmbeds) {
                     val src = iframe.attr("src")
-                    loadExtractor(src, subtitleCallback, callback)
-                    foundLinks = true
+                    if (src.isNotEmpty()) {
+                        loadExtractor(src, subtitleCallback, callback)
+                        foundLinks = true
+                    }
                 }
             }
             
