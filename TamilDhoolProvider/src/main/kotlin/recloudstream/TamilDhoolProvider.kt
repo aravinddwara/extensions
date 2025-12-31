@@ -145,12 +145,13 @@ class TamilDhoolProvider : MainAPI() {
                 
                 if (videoSrc != null) {
                     callback.invoke(
-                        newExtractorLink(
-                            name = "Sai Baba Live",
-                            source = name,
-                            url = videoSrc,
-                            headers = mapOf("Referer" to SAI_BABA_PAGE),
-                            isM3u8 = true
+                        ExtractorLink(
+                            name,
+                            "Sai Baba Live",
+                            videoSrc,
+                            SAI_BABA_PAGE,
+                            Qualities.Unknown.value,
+                            true
                         )
                     )
                     return true
