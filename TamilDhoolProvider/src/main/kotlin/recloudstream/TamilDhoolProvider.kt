@@ -221,28 +221,28 @@ class TamilDhoolProvider : MainAPI() {
                     // Add all quality variants
                     variants.forEach { variant ->
                         callback.invoke(
-                            ExtractorLink(
-                                name,
-                                "$name - ${variant.quality}",
-                                variant.url,
-                                refererUrl,
-                                variant.qualityInt,
-                                true,
-                                streamHeaders
+                            newExtractorLink(
+                                source = name,
+                                name = "$name - ${variant.quality}",
+                                url = variant.url,
+                                referer = refererUrl,
+                                quality = variant.qualityInt,
+                                type = ExtractorLinkType.M3U8,
+                                headers = streamHeaders
                             )
                         )
                     }
                 } else {
                     // No variants, use master playlist
                     callback.invoke(
-                        ExtractorLink(
-                            name,
-                            "$name - Auto",
-                            m3u8Url,
-                            refererUrl,
-                            Qualities.Unknown.value,
-                            true,
-                            streamHeaders
+                        newExtractorLink(
+                            source = name,
+                            name = "$name - Auto",
+                            url = m3u8Url,
+                            referer = refererUrl,
+                            quality = Qualities.Unknown.value,
+                            type = ExtractorLinkType.M3U8,
+                            headers = streamHeaders
                         )
                     )
                 }
