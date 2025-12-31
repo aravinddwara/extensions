@@ -9,11 +9,15 @@ import okhttp3.Interceptor
 class TamilDhoolProvider : MainAPI() {
     override var mainUrl = "https://www.tamildhool.tech"
     override var name = "TamilDhool"
-    override val supportedTypes = setOf(TvType.Movie)
+    override val supportedTypes = setOf(TvType.Movie, TvType.Live)
     override var lang = "ta"
     override val hasMainPage = true
 
+    private val SAI_BABA_LIVE = "SAI_BABA_LIVE_STREAM"
+    private val SAI_BABA_PAGE = "https://sai.org.in/en/sai-video-popup"
+
     override val mainPage = mainPageOf(
+        SAI_BABA_LIVE to "🔴 Live",
         "$mainUrl/vijay-tv/vijay-tv-serial/" to "Vijay TV Serials",
         "$mainUrl/vijay-tv/vijay-tv-show/" to "Vijay TV Shows",
         "$mainUrl/sun-tv/sun-tv-serial/" to "Sun TV Serials",
@@ -32,6 +36,25 @@ class TamilDhoolProvider : MainAPI() {
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        if (request.data == SAI_BABA_LIVE) {
+            return newHomePageResponse(
+                list = HomePageList(
+                    name = request.name,
+                    list = listOf(
+                        newMovieSearchResponse(
+                            name = "Sai Baba Live",
+                            url = SAI_BABA_LIVE,
+                            type = TvType.Live
+                        ) {
+                            this.posterUrl = "https://i.ibb.co/zVQDvnnv/LIVE.jpg"
+                        }
+                    ),
+                    isHorizontalImages = true
+                ),
+                hasNext = false
+            )
+        }
+
         val doc = app.get(request.data + if (page > 1) "page/$page/" else "").document
         
         val episodes = doc.select("article.regular-post").mapNotNull { elem ->
@@ -75,6 +98,18 @@ class TamilDhoolProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
+        if (url == SAI_BABA_LIVE) {
+            return newMovieLoadResponse(
+                name = "Sai Baba Temple Live",
+                url = url,
+                type = TvType.Live,
+                dataUrl = url
+            ) {
+                this.posterUrl = "https://i.ibb.co/zVQDvnnv/LIVE.jpg"
+                this.plot = "Shri Sai Baba of Shirdi, also known as Shirdi Sai Baba, Shree Sainath was an Indian spiritual guru considered to be a saint, and revered by both Hindu and Muslim devotees during and after his lifetime. Sai Baba preached the importance of "realisation of the self" and criticised "love towards perishable things""
+            }
+        }
+
         val doc = app.get(url).document
         
         val rawTitle = doc.selectFirst("h1.entry-title")?.text() ?: "Unknown"
@@ -103,6 +138,30 @@ class TamilDhoolProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
+        if (data == SAI_BABA_LIVE) {
+            try {
+                val doc = app.get(SAI_BABA_PAGE).document
+                val videoSrc = doc.selectFirst("video#example-video_html5_api")?.attr("src")
+                
+                if (videoSrc != null) {
+                    callback.invoke(
+                        ExtractorLink(
+                            source = name,
+                            name = "Sai Baba Live",
+                            url = videoSrc,
+                            referer = SAI_BABA_PAGE,
+                            quality = Qualities.Unknown.value,
+                            isM3u8 = true
+                        )
+                    )
+                    return true
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            return false
+        }
+
         var foundLinks = false
         
         try {
@@ -177,7 +236,6 @@ class TamilDhoolProvider : MainAPI() {
     
     private suspend fun extractThrfive(embedUrl: String, refererUrl: String, callback: (ExtractorLink) -> Unit) {
         try {
-            // Store cookies from embed page visit
             val cookieJar = mutableMapOf<String, String>()
             
             val html = app.get(
@@ -188,7 +246,6 @@ class TamilDhoolProvider : MainAPI() {
                         val request = chain.request()
                         val response = chain.proceed(request)
                         
-                        // Capture cookies
                         response.headers("Set-Cookie").forEach { cookie ->
                             val parts = cookie.split(";")[0].split("=", limit = 2)
                             if (parts.size == 2) {
@@ -201,11 +258,9 @@ class TamilDhoolProvider : MainAPI() {
                 }
             ).text
             
-            // Decode _juicycodes() to get M3U8 URL
             val m3u8Url = decodeJuicyCodes(html)
             
             if (m3u8Url != null) {
-                // Prepare headers with cookies
                 val streamHeaders = mapOf(
                     "Origin" to "https://thrfive.io",
                     "Referer" to refererUrl,
@@ -214,7 +269,6 @@ class TamilDhoolProvider : MainAPI() {
                     "Cookie" to cookieJar.entries.joinToString("; ") { "${it.key}=${it.value}" }
                 )
                 
-                // Use M3U8Helper to generate links with proper quality detection
                 M3u8Helper.generateM3u8(
                     source = name,
                     streamUrl = m3u8Url,
@@ -230,26 +284,20 @@ class TamilDhoolProvider : MainAPI() {
     
     private fun decodeJuicyCodes(html: String): String? {
         try {
-            // Find _juicycodes() call
             val juicyPattern = Regex("""_juicycodes\(((?:"[^"]*"\s*\+\s*)*"[^"]*")\)""")
             val match = juicyPattern.find(html) ?: return null
             
-            // Extract and concatenate all quoted strings
             val stringExpr = match.groupValues[1]
             val strings = Regex(""""([^"]*)"""").findAll(stringExpr).map { it.groupValues[1] }.toList()
             val encodedString = strings.joinToString("")
             
-            // JuicyCodes decoding
             val symbolMap = listOf("`", "%", "-", "+", "*", "$", "!", "_", "^", "=")
             
-            // Step 1: Extract salt (last 3 chars)
             val mainContent = encodedString.substring(0, encodedString.length - 3)
             val saltStr = encodedString.substring(encodedString.length - 3)
             
-            // Decode salt
             val salt = saltStr.map { it.code - 100 }.joinToString("").toInt()
             
-            // Step 2: Base64 decode
             val decodedB64 = try {
                 val base64Str = mainContent.replace("_", "+").replace("-", "/")
                 val padding = (4 - base64Str.length % 4) % 4
@@ -259,7 +307,6 @@ class TamilDhoolProvider : MainAPI() {
                 return null
             }
             
-            // Step 3: ROT13
             val rot13Decoded = decodedB64.map { char ->
                 when {
                     char in 'a'..'z' -> ((char - 'a' + 13) % 26 + 'a'.code).toChar()
@@ -268,12 +315,10 @@ class TamilDhoolProvider : MainAPI() {
                 }
             }.joinToString("")
             
-            // Step 4: Map symbols to indices
             val indices = rot13Decoded.mapNotNull { char ->
                 symbolMap.indexOf(char.toString()).takeIf { it >= 0 }
             }.joinToString("")
             
-            // Step 5: Split into 4-digit groups and decode
             val groups = indices.chunked(4)
             val result = groups.mapNotNull { group ->
                 if (group.length == 4) {
@@ -285,7 +330,6 @@ class TamilDhoolProvider : MainAPI() {
                 } else null
             }.joinToString("")
             
-            // Extract M3U8 URL from decoded JavaScript
             val m3u8Patterns = listOf(
                 Regex("""(https://coke\.infamous\.network/stream/[A-Za-z0-9+/=_-]+\.m3u8)"""),
                 Regex("""(https://khufu\.groovy\.monster/stream/[A-Za-z0-9+/=_-]+\.m3u8)"""),
